@@ -5,7 +5,7 @@ let allUsernames = [];
 let currentPage = 'home';
 
 // API Base URL
-const API_BASE = '/api';
+const API_BASE = 'https://www.indotag.site/';
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
