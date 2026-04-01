@@ -39,7 +39,8 @@ def index():
 @app.route('/miniapp')
 def miniapp():
     """Halaman MiniApp Telegram"""
-    return render_template('html', 'miniapp.html')
+    # Perbaikan: menggunakan path yang benar ke file miniapp.html di folder html
+    return render_template('html/miniapp.html')
 
 @app.route('/api/telegram/auth', methods=['POST'])
 def telegram_auth():
