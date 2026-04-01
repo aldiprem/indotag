@@ -2,89 +2,101 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Indotag Marketplace</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IndoTag - Platform Digital Terpercaya</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div id="loading-screen" class="loading-screen">
-        <div class="loader"></div>
-        <p>Memuat Indotag Marketplace...</p>
-    </div>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <h1>IndoTag</h1>
+            </div>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="#marketplace">Marketplace</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#privacy">Privacy</a>
+                <a href="#contact">Contact</a>
+            </div>
+            <div class="nav-actions">
+                <button class="btn-login" id="loginBtn">Login / Daftar</button>
+            </div>
+        </div>
+    </nav>
 
-    <div id="app" style="display: none;">
-        <header class="header">
-            <div class="container">
-                <div class="logo">Indotag</div>
-                <button class="mobile-toggle" id="mobileToggle"><i class="fas fa-bars"></i></button>
-                <nav class="nav" id="nav">
-                    <a href="#" class="nav-link active" data-page="home">Beranda</a>
-                    <a href="#" class="nav-link" data-page="marketplace">Marketplace</a>
-                    <a href="#" class="nav-link" data-page="pricing">Harga</a>
-                    <a href="#" class="nav-link" data-page="how-it-works">Cara Kerja</a>
-                    <a href="#" class="nav-link" data-page="privacy">Privacy</a>
-                </nav>
-                <div class="user-section">
-                    <div id="userInfo" style="display: none;">
-                        <span id="userName"></span>
-                        <button id="logoutBtn"><i class="fas fa-sign-out-alt"></i></button>
-                    </div>
-                    <button id="loginBtn" class="btn-login">Login</button>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Solusi Digital Terbaik untuk Bisnis Anda</h1>
+            <p>Bergabunglah dengan ribuan pengguna yang telah mempercayakan kebutuhan digital mereka kepada IndoTag</p>
+            <button class="btn-primary" id="getStartedBtn">Mulai Sekarang</button>
+        </div>
+    </section>
+
+    <!-- Marketplace Section -->
+    <section id="marketplace" class="marketplace">
+        <div class="container">
+            <h2>Marketplace</h2>
+            <div class="products-grid" id="productsGrid">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing">
+        <div class="container">
+            <h2>Harga Spesial untuk Anda</h2>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <h3>Basic</h3>
+                    <div class="price">Rp 19.900<span>/bulan</span></div>
+                    <ul>
+                        <li>Fitur dasar</li>
+                        <li>Dukungan email</li>
+                        <li>1 user</li>
+                    </ul>
+                    <button class="btn-secondary">Pilih Paket</button>
+                </div>
+                <div class="pricing-card popular">
+                    <div class="popular-badge">Populer</div>
+                    <h3>Premium</h3>
+                    <div class="price">Rp 99.900<span>/bulan</span></div>
+                    <ul>
+                        <li>Semua fitur</li>
+                        <li>Dukungan prioritas</li>
+                        <li>5 user</li>
+                        <li>API akses</li>
+                    </ul>
+                    <button class="btn-primary">Pilih Paket</button>
+                </div>
+                <div class="pricing-card">
+                    <h3>Enterprise</h3>
+                    <div class="price">Custom</div>
+                    <ul>
+                        <li>Solusi khusus</li>
+                        <li>Dedicated support</li>
+                        <li>Unlimited user</li>
+                    </ul>
+                    <button class="btn-secondary">Hubungi Kami</button>
                 </div>
             </div>
-        </header>
+        </div>
+    </section>
 
-        <main class="main-content">
-            <div id="home-page" class="page active">
-                <div class="hero">
-                    <h1>Marketplace Username <span class="gradient">Premium</span></h1>
-                    <p>Jual & Beli username Telegram, Instagram, Twitter dengan aman dan terpercaya</p>
-                    <div class="hero-buttons">
-                        <button class="btn btn-primary" id="exploreBtn">Explore Marketplace</button>
-                        <button class="btn btn-secondary" id="howBtn">Cara Kerja</button>
-                    </div>
-                    <div class="stats">
-                        <div><span id="totalUsernames">0</span><label>Username</label></div>
-                        <div><span id="totalUsers">0</span><label>Pengguna</label></div>
-                        <div><span id="totalTransactions">0</span><label>Transaksi</label></div>
-                    </div>
-                </div>
-                <div class="features">
-                    <h2>Kenapa Pilih Indotag?</h2>
-                    <div class="features-grid">
-                        <div class="feature"><i class="fas fa-shield-alt"></i><h3>Aman & Terpercaya</h3><p>Sistem escrow untuk keamanan transaksi</p></div>
-                        <div class="feature"><i class="fas fa-bolt"></i><h3>Proses Cepat</h3><p>Transaksi instan dengan sistem otomatis</p></div>
-                        <div class="feature"><i class="fas fa-hand-holding-usd"></i><h3>Harga Kompetitif</h3><p>Harga terbaik dari berbagai seller</p></div>
-                        <div class="feature"><i class="fab fa-telegram"></i><h3>Integrasi Telegram</h3><p>Akses langsung melalui Telegram Mini App</p></div>
-                    </div>
-                </div>
+    <!-- Privacy Section -->
+    <section id="privacy" class="privacy">
+        <div class="container">
+            <h2>Privasi & Keamanan</h2>
+            <div class="privacy-content">
+                <p>Data Anda aman bersama kami. Kami berkomitmen untuk melindungi privasi pengguna dengan standar keamanan tertinggi.</p>
             </div>
+        </div>
+    </section>
 
-            <div id="marketplace-page" class="page">
-                <h2>Marketplace Username</h2>
-                <div class="filters">
-                    <select id="platformFilter"><option value="all">Semua Platform</option><option value="telegram">Telegram</option><option value="instagram">Instagram</option><option value="twitter">Twitter</option></select>
-                    <select id="sortFilter"><option value="newest">Terbaru</option><option value="price_low">Harga Terendah</option><option value="price_high">Harga Tertinggi</option></select>
-                    <input type="text" id="searchInput" placeholder="Cari username...">
-                </div>
-                <div id="marketplaceGrid" class="marketplace-grid"><div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><p>Memuat username...</p></div></div>
-            </div>
-
-            <div id="pricing-page" class="page"><h2>Harga & Biaya</h2><div class="pricing-grid"><div class="pricing-card"><h3>Basic</h3><div class="price">Gratis</div><ul><li><i class="fas fa-check"></i> Listing gratis</li><li><i class="fas fa-check"></i> Maksimal 5 username</li><li><i class="fas fa-check"></i> Komisi 10%</li></ul></div><div class="pricing-card featured"><div class="badge">Populer</div><h3>Premium</h3><div class="price">Rp 50.000<span>/bulan</span></div><ul><li><i class="fas fa-check"></i> Unlimited listing</li><li><i class="fas fa-check"></i> Prioritas pencarian</li><li><i class="fas fa-check"></i> Komisi 5%</li></ul><button class="btn">Upgrade</button></div><div class="pricing-card"><h3>Enterprise</h3><div class="price">Rp 200.000<span>/bulan</span></div><ul><li><i class="fas fa-check"></i> Semua fitur Premium</li><li><i class="fas fa-check"></i> API access</li><li><i class="fas fa-check"></i> Komisi 3%</li></ul><button class="btn">Hubungi</button></div></div></div>
-
-            <div id="how-it-works-page" class="page"><h2>Cara Kerja Indotag</h2><div class="steps"><div class="step"><div class="step-num">1</div><div><h3>Daftar Akun</h3><p>Login dengan Telegram atau daftar email</p></div></div><div class="step"><div class="step-num">2</div><div><h3>Jual Username</h3><p>List username dengan harga yang diinginkan</p></div></div><div class="step"><div class="step-num">3</div><div><h3>Beli Username</h3><p>Cari username favorit dan lakukan pembelian</p></div></div><div class="step"><div class="step-num">4</div><div><h3>Transaksi Aman</h3><p>Sistem escrow menjamin keamanan</p></div></div></div></div>
-
-            <div id="privacy-page" class="page"><h2>Kebijakan Privasi</h2><div class="privacy"><section><h3>Informasi yang Kami Kumpulkan</h3><p>Email, username Telegram, dan data profil lainnya saat mendaftar.</p></section><section><h3>Penggunaan Informasi</h3><p>Untuk memproses transaksi, mengamankan akun, dan meningkatkan layanan.</p></section></div></div>
-        </main>
-
-        <footer class="footer"><div class="container"><p>&copy; 2024 Indotag Marketplace. All rights reserved.</p></div></footer>
-    </div>
-
-    <div id="loginModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h2>Login</h2><form id="loginForm"><input type="text" id="loginEmail" placeholder="Email / Username" required><input type="password" id="loginPassword" placeholder="Password" required><button type="submit" class="btn btn-primary btn-block">Login</button></form><p>Belum punya akun? <a href="#" id="showRegister">Daftar</a></p></div></div>
-    <div id="registerModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h2>Daftar</h2><form id="registerForm"><input type="email" id="regEmail" placeholder="Email" required><input type="text" id="regUsername" placeholder="Username"><input type="password" id="regPassword" placeholder="Password" required><input type="password" id="regConfirm" placeholder="Konfirmasi Password" required><button type="submit" class="btn btn-primary btn-block">Daftar</button></form><p>Sudah punya akun? <a href="#" id="showLogin">Login</a></p></div></div>
-
-    <script src="/js/script.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/js/main.js"></script>
 </body>
 </html>

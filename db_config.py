@@ -1,12 +1,16 @@
-import pymysql
-from config import Config
+import mysql.connector
+from mysql.connector import Error
 
 def get_db_connection():
-    return pymysql.connect(
-        host=Config.MYSQL_HOST,
-        user=Config.MYSQL_USER,
-        password=Config.MYSQL_PASSWORD,
-        database=Config.MYSQL_DB,
-        charset='utf8mb4',
-        cursorclass=pymysql.cursors.DictCursor
-    )
+    """Create database connection"""
+    try:
+        connection = mysql.connector.connect(
+            host='localhost',
+            database='indotag',
+            user='root',
+            password='Asdf1234_'
+        )
+        return connection
+    except Error as e:
+        print(f"Error connecting to MySQL: {e}")
+        return None
