@@ -1,3 +1,7 @@
+// =====================================================
+// Indotag Marketplace - Main JavaScript
+// =====================================================
+
 // Global variables
 let currentUser = null;
 let isTelegramApp = false;
@@ -5,53 +9,75 @@ let allUsernames = [];
 let currentPage = 'home';
 
 // API Base URL
-const API_BASE = 'https://indotag.site';
+const API_BASE = window.location.origin;
 
+// =====================================================
 // Initialize on page load
+// =====================================================
 document.addEventListener('DOMContentLoaded', async () => {
     // Detect platform
     detectPlatform();
     
+    // Jika di Telegram Mini App, redirect ke halaman khusus
+    if (isTelegramApp) {
+        console.log('Detected Telegram Mini App, redirecting to miniapp page...');
+        window.location.href = '/miniapp';
+        return;
+    }
+    
     // Hide loading screen after initial load
     setTimeout(() => {
-        document.getElementById('loading-screen').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
+        const loadingScreen = document.getElementById('loading-screen');
+        const mainContent = document.getElementById('main-content');
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        if (mainContent) mainContent.style.display = 'block';
     }, 1000);
     
     // Setup event listeners
     setupEventListeners();
     
-    // Initialize based on platform
-    if (isTelegramApp) {
-        await initTelegramApp();
-    } else {
-        initBrowserApp();
-    }
+    // Initialize browser app
+    initBrowserApp();
     
     // Load initial data
     await loadStats();
     await loadUsernames();
 });
 
+// =====================================================
 // Detect if user is in Telegram Mini App or Browser
+// =====================================================
 function detectPlatform() {
     // Check if in Telegram Web App
     if (window.Telegram && window.Telegram.WebApp) {
         isTelegramApp = true;
         console.log('Running in Telegram Mini App');
-    } else {
-        // Check URL parameters for Telegram data
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('tgWebAppData')) {
-            isTelegramApp = true;
-        } else {
-            isTelegramApp = false;
-            console.log('Running in Browser');
-        }
+        return;
     }
+    
+    // Check URL parameters for Telegram data
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tgWebAppData') || urlParams.get('tgWebAppVersion')) {
+        isTelegramApp = true;
+        console.log('Running in Telegram Mini App (URL param detected)');
+        return;
+    }
+    
+    // Check user agent for Telegram
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (userAgent.includes('telegram')) {
+        isTelegramApp = true;
+        console.log('Running in Telegram (User Agent detected)');
+        return;
+    }
+    
+    isTelegramApp = false;
+    console.log('Running in Browser');
 }
 
+// =====================================================
 // Setup all event listeners
+// =====================================================
 function setupEventListeners() {
     // Navigation
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -131,7 +157,7 @@ function setupEventListeners() {
     
     if (platformFilter) platformFilter.addEventListener('change', filterUsernames);
     if (sortFilter) sortFilter.addEventListener('change', filterUsernames);
-    if (searchInput) searchInput.addEventListener('input', filterUsernames);
+    if (searchInput) searchInput.addEventListener('input', debounce(filterUsernames, 500));
     
     // Hero buttons
     const exploreBtn = document.getElementById('exploreMarketplaceBtn');
@@ -147,56 +173,44 @@ function setupEventListeners() {
     // Prevent scroll refresh on top
     const scrollContainer = document.getElementById('scrollContainer');
     if (scrollContainer) {
-        scrollContainer.addEventListener('scroll', (e) => {
-            // Prevent default browser refresh behavior
-            if (scrollContainer.scrollTop <= 0) {
+        let startY = 0;
+        scrollContainer.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+        });
+        scrollContainer.addEventListener('touchmove', (e) => {
+            if (scrollContainer.scrollTop <= 0 && e.touches[0].clientY > startY) {
                 e.preventDefault();
             }
         });
     }
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', (e) => {
+        const loginModal = document.getElementById('loginModal');
+        const registerModal = document.getElementById('registerModal');
+        if (e.target === loginModal) loginModal.style.display = 'none';
+        if (e.target === registerModal) registerModal.style.display = 'none';
+    });
 }
 
-// Initialize Telegram Mini App
-async function initTelegramApp() {
-    try {
-        // Get Telegram user data
-        let tgUser = null;
-        
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            tgUser = tg.initDataUnsafe?.user;
-            tg.expand(); // Expand to full screen
-        }
-        
-        if (tgUser) {
-            // Authenticate with backend
-            const response = await fetch(`${API_BASE}/api/auth/telegram`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    id: tgUser.id,
-                    first_name: tgUser.first_name,
-                    last_name: tgUser.last_name,
-                    username: tgUser.username,
-                    auth_date: Math.floor(Date.now() / 1000),
-                    hash: 'telegram-web-app-auth' // In production, use proper hash
-                })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                currentUser = data.user;
-                updateUserUI();
-            }
-        }
-    } catch (error) {
-        console.error('Error initializing Telegram app:', error);
-    }
+// =====================================================
+// Utility Functions
+// =====================================================
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
-// Initialize Browser App
+// =====================================================
+// Browser App Initialization
+// =====================================================
 function initBrowserApp() {
     // Check for existing session
     checkSession();
@@ -208,11 +222,17 @@ function initBrowserApp() {
     }
 }
 
-// Check existing session
+// =====================================================
+// Session Management
+// =====================================================
 async function checkSession() {
     try {
         const response = await fetch(`${API_BASE}/api/auth/me`, {
-            credentials: 'include'
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         });
         
         if (response.ok) {
@@ -227,39 +247,46 @@ async function checkSession() {
     }
 }
 
-// Update UI based on user
+// =====================================================
+// UI Update Functions
+// =====================================================
 function updateUserUI() {
     const userInfo = document.getElementById('userInfo');
     const loginBtn = document.getElementById('loginBtn');
     
     if (currentUser) {
-        userInfo.style.display = 'flex';
-        loginBtn.style.display = 'none';
+        if (userInfo) userInfo.style.display = 'flex';
+        if (loginBtn) loginBtn.style.display = 'none';
         
         // Update user info
         const userName = document.getElementById('userName');
         const userAvatar = document.getElementById('userAvatar');
         
         if (userName) {
-            userName.textContent = currentUser.username || currentUser.full_name || currentUser.email;
+            userName.textContent = currentUser.username || currentUser.full_name || currentUser.email || 'User';
         }
         if (userAvatar && currentUser.avatar) {
             userAvatar.src = currentUser.avatar;
         }
     } else {
-        userInfo.style.display = 'none';
-        if (!isTelegramApp) {
-            loginBtn.style.display = 'block';
-        }
+        if (userInfo) userInfo.style.display = 'none';
+        if (loginBtn && !isTelegramApp) loginBtn.style.display = 'block';
     }
 }
 
-// Handle login
+// =====================================================
+// Authentication Handlers
+// =====================================================
 async function handleLogin(e) {
     e.preventDefault();
     
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
+    
+    if (!email || !password) {
+        showNotification('Email/Username dan password harus diisi', 'warning');
+        return;
+    }
     
     try {
         const response = await fetch(`${API_BASE}/api/auth/login`, {
@@ -271,15 +298,15 @@ async function handleLogin(e) {
             body: JSON.stringify({ email_or_username: email, password })
         });
         
+        const data = await response.json();
+        
         if (response.ok) {
-            const data = await response.json();
             currentUser = data.user;
             updateUserUI();
             closeModals();
             showNotification('Login berhasil!', 'success');
         } else {
-            const error = await response.json();
-            showNotification(error.error || 'Login gagal', 'error');
+            showNotification(data.error || 'Login gagal', 'error');
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -287,7 +314,6 @@ async function handleLogin(e) {
     }
 }
 
-// Handle register
 async function handleRegister(e) {
     e.preventDefault();
     
@@ -295,6 +321,11 @@ async function handleRegister(e) {
     const username = document.getElementById('regUsername').value;
     const password = document.getElementById('regPassword').value;
     const confirmPassword = document.getElementById('regConfirmPassword').value;
+    
+    if (!email || !password) {
+        showNotification('Email dan password harus diisi', 'warning');
+        return;
+    }
     
     if (password !== confirmPassword) {
         showNotification('Password tidak cocok', 'error');
@@ -310,13 +341,14 @@ async function handleRegister(e) {
             body: JSON.stringify({ email, username, password })
         });
         
+        const data = await response.json();
+        
         if (response.ok) {
             showNotification('Registrasi berhasil! Silakan login.', 'success');
             closeModals();
             document.getElementById('loginModal').style.display = 'block';
         } else {
-            const error = await response.json();
-            showNotification(error.error || 'Registrasi gagal', 'error');
+            showNotification(data.error || 'Registrasi gagal', 'error');
         }
     } catch (error) {
         console.error('Register error:', error);
@@ -324,7 +356,6 @@ async function handleRegister(e) {
     }
 }
 
-// Handle logout
 async function handleLogout() {
     try {
         await fetch(`${API_BASE}/api/auth/logout`, {
@@ -337,27 +368,34 @@ async function handleLogout() {
         showNotification('Logout berhasil', 'success');
     } catch (error) {
         console.error('Logout error:', error);
+        showNotification('Logout gagal', 'error');
     }
 }
 
-// Show login modal
+// =====================================================
+// Modal Functions
+// =====================================================
 function showLoginModal() {
     document.getElementById('loginModal').style.display = 'block';
 }
 
-// Close modals
 function closeModals() {
-    document.getElementById('loginModal').style.display = 'none';
-    document.getElementById('registerModal').style.display = 'none';
+    const loginModal = document.getElementById('loginModal');
+    const registerModal = document.getElementById('registerModal');
+    if (loginModal) loginModal.style.display = 'none';
+    if (registerModal) registerModal.style.display = 'none';
 }
 
-// Navigate to page
+// =====================================================
+// Navigation
+// =====================================================
 function navigateTo(page) {
     // Update active page
     document.querySelectorAll('.page').forEach(p => {
         p.classList.remove('active');
     });
-    document.getElementById(`${page}-page`).classList.add('active');
+    const targetPage = document.getElementById(`${page}-page`);
+    if (targetPage) targetPage.classList.add('active');
     
     // Update active nav link
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -382,73 +420,55 @@ function navigateTo(page) {
     }
 }
 
-// Load statistics
+// =====================================================
+// Data Loading Functions
+// =====================================================
 async function loadStats() {
-    // In production, fetch from API
-    // For now, use dummy data
-    const stats = {
-        totalUsernames: 1234,
-        totalUsers: 567,
-        totalTransactions: 890
-    };
-    
-    const totalUsernamesEl = document.getElementById('totalUsernames');
-    const totalUsersEl = document.getElementById('totalUsers');
-    const totalTransactionsEl = document.getElementById('totalTransactions');
-    
-    if (totalUsernamesEl) totalUsernamesEl.textContent = stats.totalUsernames;
-    if (totalUsersEl) totalUsersEl.textContent = stats.totalUsers;
-    if (totalTransactionsEl) totalTransactionsEl.textContent = stats.totalTransactions;
+    try {
+        const response = await fetch(`${API_BASE}/api/stats`);
+        if (response.ok) {
+            const stats = await response.json();
+            
+            const totalUsernamesEl = document.getElementById('totalUsernames');
+            const totalUsersEl = document.getElementById('totalUsers');
+            const totalTransactionsEl = document.getElementById('totalTransactions');
+            
+            if (totalUsernamesEl) totalUsernamesEl.textContent = stats.total_usernames || 0;
+            if (totalUsersEl) totalUsersEl.textContent = stats.total_users || 0;
+            if (totalTransactionsEl) totalTransactionsEl.textContent = stats.total_transactions || 0;
+        }
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
 }
 
-// Load usernames
 async function loadUsernames() {
+    const grid = document.getElementById('marketplaceGrid');
+    if (!grid) return;
+    
     try {
-        // In production, fetch from API
-        // const response = await fetch(`${API_BASE}/api/usernames`);
-        // allUsernames = await response.json();
-        
-        // Dummy data for now
-        allUsernames = [
-            {
-                id: 1,
-                username: '@john_doe',
-                platform: 'telegram',
-                price: 500000,
-                description: 'Username premium, mudah diingat',
-                seller: { username: 'seller1' }
-            },
-            {
-                id: 2,
-                username: '@jane_doe',
-                platform: 'instagram',
-                price: 750000,
-                description: 'Instagram username premium',
-                seller: { username: 'seller2' }
-            },
-            {
-                id: 3,
-                username: '@tech_news',
-                platform: 'twitter',
-                price: 1000000,
-                description: 'Cocok untuk tech enthusiast',
-                seller: { username: 'seller3' }
-            }
-        ];
-        
-        renderUsernames(allUsernames);
+        const response = await fetch(`${API_BASE}/api/usernames`);
+        if (response.ok) {
+            allUsernames = await response.json();
+            renderUsernames(allUsernames);
+        } else {
+            throw new Error('Failed to load usernames');
+        }
     } catch (error) {
         console.error('Error loading usernames:', error);
+        grid.innerHTML = '<div class="text-center" style="padding: 50px;"><p>Gagal memuat username. Silakan refresh halaman.</p></div>';
         showNotification('Gagal memuat username', 'error');
     }
 }
 
-// Render usernames to grid
+// =====================================================
+// Render Functions
+// =====================================================
 function renderUsernames(usernames) {
     const grid = document.getElementById('marketplaceGrid');
     if (!grid) return;
     
-    if (usernames.length === 0) {
+    if (!usernames || usernames.length === 0) {
         grid.innerHTML = '<div class="text-center" style="padding: 50px;"><p>Tidak ada username ditemukan</p></div>';
         return;
     }
@@ -456,7 +476,7 @@ function renderUsernames(usernames) {
     grid.innerHTML = usernames.map(username => `
         <div class="username-card" data-id="${username.id}">
             <div class="card-header">
-                <h3>${username.username}</h3>
+                <h3>${escapeHtml(username.username)}</h3>
                 <span class="platform-badge">
                     <i class="fab fa-${getPlatformIcon(username.platform)}"></i>
                     ${getPlatformName(username.platform)}
@@ -464,10 +484,10 @@ function renderUsernames(usernames) {
             </div>
             <div class="card-body">
                 <div class="price">Rp ${formatPrice(username.price)}</div>
-                <div class="description">${username.description || 'Username premium dengan harga terbaik'}</div>
+                <div class="description">${escapeHtml(username.description || 'Username premium dengan harga terbaik')}</div>
                 <div class="seller-info">
                     <i class="fas fa-user"></i>
-                    <span>Penjual: ${username.seller.username}</span>
+                    <span>Penjual: ${escapeHtml(username.seller_username || 'User')}</span>
                 </div>
             </div>
             <div class="card-footer">
@@ -479,7 +499,9 @@ function renderUsernames(usernames) {
     `).join('');
 }
 
-// Filter usernames
+// =====================================================
+// Filter Functions
+// =====================================================
 function filterUsernames() {
     let filtered = [...allUsernames];
     
@@ -502,28 +524,53 @@ function filterUsernames() {
     } else if (sort === 'price_high') {
         filtered.sort((a, b) => b.price - a.price);
     } else if (sort === 'newest') {
-        filtered.sort((a, b) => b.id - a.id);
+        filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }
     
     renderUsernames(filtered);
 }
 
-// Buy username
+// =====================================================
+// Buy Function
+// =====================================================
 async function buyUsername(usernameId) {
     if (!currentUser) {
-        if (isTelegramApp) {
-            showNotification('Silakan login terlebih dahulu', 'warning');
-        } else {
-            showLoginModal();
-        }
+        showLoginModal();
+        showNotification('Silakan login terlebih dahulu', 'warning');
         return;
     }
     
-    // In production, proceed with purchase
-    showNotification('Fitur pembelian akan segera tersedia', 'info');
+    const username = allUsernames.find(u => u.id === usernameId);
+    if (!username) return;
+    
+    if (confirm(`Apakah Anda yakin ingin membeli ${username.username} seharga Rp ${formatPrice(username.price)}?`)) {
+        try {
+            const response = await fetch(`${API_BASE}/api/usernames/${usernameId}/buy`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showNotification('Pembelian berhasil! Silakan selesaikan pembayaran.', 'success');
+                await loadUsernames();
+            } else {
+                showNotification(data.error || 'Pembelian gagal', 'error');
+            }
+        } catch (error) {
+            console.error('Error buying username:', error);
+            showNotification('Pembelian gagal', 'error');
+        }
+    }
 }
 
-// Helper functions
+// =====================================================
+// Helper Functions
+// =====================================================
 function getPlatformIcon(platform) {
     const icons = {
         telegram: 'telegram',
@@ -548,13 +595,37 @@ function formatPrice(price) {
     return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// =====================================================
+// Notification System
+// =====================================================
 function showNotification(message, type = 'info') {
+    // Remove existing notification
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
+    
+    const icons = {
+        success: 'check-circle',
+        error: 'exclamation-circle',
+        warning: 'exclamation-triangle',
+        info: 'info-circle'
+    };
+    
     notification.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-        <span>${message}</span>
+        <i class="fas fa-${icons[type] || icons.info}"></i>
+        <span>${escapeHtml(message)}</span>
     `;
     
     // Add styles
@@ -562,13 +633,18 @@ function showNotification(message, type = 'info') {
         position: fixed;
         top: 80px;
         right: 20px;
-        background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : '#3498db'};
+        background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : type === 'warning' ? '#f39c12' : '#3498db'};
         color: white;
         padding: 12px 20px;
         border-radius: 8px;
         z-index: 10000;
         animation: slideInRight 0.3s ease;
         box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        max-width: 350px;
     `;
     
     document.body.appendChild(notification);
@@ -580,29 +656,32 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-// Add animation styles
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
+// Add animation styles if not already added
+if (!document.getElementById('notification-styles')) {
+    const style = document.createElement('style');
+    style.id = 'notification-styles';
+    style.textContent = `
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
-        to {
-            transform: translateX(0);
-            opacity: 1;
+        
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
         }
-    }
-    
-    @keyframes slideOutRight {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
+    `;
+    document.head.appendChild(style);
+}

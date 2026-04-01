@@ -16,9 +16,6 @@ app = Flask(__name__,
 app.config.from_object(Config)
 CORS(app)
 
-# Initialize Telegram Auth
-telegram_auth = TelegramAuth(Config.TELEGRAM_BOT_TOKEN)
-
 def get_user_from_session():
     """Helper to get user from session token in cookie"""
     session_token = request.cookies.get('session_token')
@@ -50,7 +47,7 @@ def index():
 
 @app.route('/miniapp')
 def miniapp():
-    return send_from_directory('html', 'miniapp.html')
+    return send_from_directory('.', 'miniapp.html')
 
 # =====================================================
 # Health Check
@@ -70,25 +67,31 @@ def health_check():
 
 @app.route('/api/auth/telegram', methods=['POST'])
 def auth_telegram():
-    """Authenticate user via Telegram Mini App"""
+    """Authenticate user via Telegram Mini App (data from frontend)"""
     try:
         auth_data = request.json
-        verified_data = telegram_auth.verify_telegram_auth(auth_data)
         
-        if not verified_data:
-            return jsonify({'error': 'Invalid Telegram authentication'}), 401
+        # Get user data from frontend (already verified by Telegram WebApp)
+        telegram_id = auth_data.get('id')
+        first_name = auth_data.get('first_name')
+        last_name = auth_data.get('last_name')
+        username = auth_data.get('username')
+        
+        if not telegram_id:
+            return jsonify({'error': 'Invalid Telegram data'}), 401
         
         # Check if user exists using service
-        user = UserService.get_user_by_telegram_id(verified_data['id'])
+        user = UserService.get_user_by_telegram_id(telegram_id)
         
         if not user:
             # Create new user
+            full_name = f"{first_name or ''} {last_name or ''}".strip()
             user_id = UserService.create_user(
                 email=None,
                 password=None,
-                username=verified_data.get('username'),
-                telegram_id=verified_data['id'],
-                full_name=f"{verified_data.get('first_name', '')} {verified_data.get('last_name', '')}".strip()
+                username=username,
+                telegram_id=telegram_id,
+                full_name=full_name if full_name else None
             )
             
             if not user_id:
@@ -474,7 +477,6 @@ if __name__ == '__main__':
     os.makedirs('css', exist_ok=True)
     os.makedirs('js', exist_ok=True)
     os.makedirs('static/img', exist_ok=True)
-    os.makedirs('templates', exist_ok=True)
     os.makedirs('services', exist_ok=True)
     
     print(f"Starting Indotag Marketplace on {Config.HOST}:{Config.PORT}")
