@@ -7,7 +7,6 @@ from config import Config
 from db_config import get_db_connection
 from models.user import User
 from utils.session_manager import SessionManager
-from utils.telegram_auth import TelegramAuth
 from services.user_service import UserService
 from services.username_service import UsernameService
 
