@@ -5,25 +5,15 @@ from datetime import datetime
 import pymysql
 from config import Config
 from db_config import get_db_connection
-from models.user import User
-from utils.session_manager import SessionManager
 from services.user_service import UserService
 from services.username_service import UsernameService
+from utils.session_manager import SessionManager
 
-app = Flask(__name__, 
-            static_folder='.',
-            static_url_path='')
+app = Flask(__name__)
 app.config.from_object(Config)
-
-# Configure CORS properly
-CORS(app, 
-     origins=['https://indotag.site', 'https://www.indotag.site', 'http://localhost:8080', 'http://127.0.0.1:8080'],
-     supports_credentials=True,
-     allow_headers=['Content-Type', 'Authorization', 'Cookie'],
-     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+CORS(app, supports_credentials=True, origins=['https://indotag.site', 'https://www.indotag.site', 'http://localhost:8080'])
 
 def get_user_from_session():
-    """Helper to get user from session token in cookie"""
     session_token = request.cookies.get('session_token')
     if session_token:
         session_data = SessionManager.get_session(session_token)
@@ -31,10 +21,7 @@ def get_user_from_session():
             return session_data
     return None
 
-# =====================================================
-# Static File Routes
-# =====================================================
-
+# ==================== STATIC FILES ====================
 @app.route('/css/<path:filename>')
 def serve_css(filename):
     return send_from_directory('css', filename)
@@ -43,78 +30,51 @@ def serve_css(filename):
 def serve_js(filename):
     return send_from_directory('js', filename)
 
-@app.route('/static/img/<path:filename>')
-def serve_img(filename):
-    return send_from_directory('static/img', filename)
+@app.route('/html/<path:filename>')
+def serve_html(filename):
+    return send_from_directory('html', filename)
 
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory('static/img', 'favicon.ico')
-
+# ==================== MAIN PAGES ====================
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
 
 @app.route('/miniapp')
 def miniapp():
-    return send_from_directory('.', 'miniapp.html')
+    return send_from_directory('html', 'miniapp.html')
 
-# =====================================================
-# Health Check
-# =====================================================
-
+# ==================== HEALTH CHECK ====================
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat()
-    })
+    return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
-# =====================================================
-# Authentication Routes
-# =====================================================
-
+# ==================== AUTHENTICATION ====================
 @app.route('/api/auth/telegram', methods=['POST'])
 def auth_telegram():
-    """Authenticate user via Telegram Mini App (data from frontend)"""
     try:
-        auth_data = request.json
-        
-        # Get user data from frontend (already verified by Telegram WebApp)
-        telegram_id = auth_data.get('id')
-        first_name = auth_data.get('first_name')
-        last_name = auth_data.get('last_name')
-        username = auth_data.get('username')
+        data = request.json
+        telegram_id = data.get('id')
+        first_name = data.get('first_name', '')
+        last_name = data.get('last_name', '')
+        username = data.get('username', '')
         
         if not telegram_id:
             return jsonify({'error': 'Invalid Telegram data'}), 401
         
-        # Check if user exists using service
         user = UserService.get_user_by_telegram_id(telegram_id)
         
         if not user:
-            # Create new user
-            full_name = f"{first_name or ''} {last_name or ''}".strip()
+            full_name = f"{first_name} {last_name}".strip()
             user_id = UserService.create_user(
-                email=None,
-                password=None,
-                username=username,
-                telegram_id=telegram_id,
-                full_name=full_name if full_name else None
+                email=None, password=None, username=username,
+                telegram_id=telegram_id, full_name=full_name if full_name else None
             )
-            
             if not user_id:
                 return jsonify({'error': 'Failed to create user'}), 500
-            
             user = UserService.get_user_by_id(user_id)
         
-        # Create session
-        user_agent = request.user_agent.string if request.user_agent else 'Unknown'
         session_token = SessionManager.create_session(
-            user['id'],
-            user_agent,
-            request.remote_addr
+            user['id'], str(request.user_agent), request.remote_addr
         )
         
         if not session_token:
@@ -130,26 +90,18 @@ def auth_telegram():
             }
         }))
         
-        # Set session cookie
-        response.set_cookie(
-            'session_token',
-            session_token,
-            max_age=Config.SESSION_EXPIRY_HOURS * 3600,
-            httponly=True,
-            samesite='Lax',
-            secure=True,
-            domain='indotag.site'  # Important for cross-subdomain
-        )
-        
+        response.set_cookie('session_token', session_token,
+                           max_age=Config.SESSION_EXPIRY_HOURS * 3600,
+                           httponly=True, samesite='Lax', secure=True,
+                           domain='indotag.site')
         return response
         
     except Exception as e:
-        print(f"Error in telegram auth: {e}")
+        print(f"Error: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
-    """Register new user with email/password (for browser users)"""
     try:
         data = request.json
         email = data.get('email')
@@ -159,29 +111,20 @@ def register():
         if not email or not password:
             return jsonify({'error': 'Email and password required'}), 400
         
-        # Check if email already exists
-        existing_user = UserService.get_user_by_email(email)
-        if existing_user:
+        if UserService.get_user_by_email(email):
             return jsonify({'error': 'Email already registered'}), 400
         
-        # Create user
         user_id = UserService.create_user(email, password, username)
-        
         if not user_id:
             return jsonify({'error': 'Failed to create user'}), 500
         
-        return jsonify({
-            'success': True,
-            'message': 'User registered successfully'
-        }), 201
-        
+        return jsonify({'success': True, 'message': 'User registered successfully'}), 201
     except Exception as e:
-        print(f"Error in register: {e}")
+        print(f"Error: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/auth/login', methods=['POST'])
 def login():
-    """Login user with email/password (for browser users)"""
     try:
         data = request.json
         email_or_username = data.get('email_or_username')
@@ -190,335 +133,145 @@ def login():
         if not email_or_username or not password:
             return jsonify({'error': 'Email/username and password required'}), 400
         
-        # Authenticate user
         user = UserService.authenticate(email_or_username, password)
-        
         if not user:
             return jsonify({'error': 'Invalid credentials'}), 401
         
-        # Check if user already has active session
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("""
-            SELECT session_token FROM sessions 
-            WHERE user_id = %s AND expires_at > NOW()
-        """, (user['id'],))
-        existing_session = cursor.fetchone()
+        cursor.execute("SELECT session_token FROM sessions WHERE user_id = %s AND expires_at > NOW()", (user['id'],))
+        existing = cursor.fetchone()
         cursor.close()
         conn.close()
         
-        if existing_session:
-            # Use existing session
-            session_token = existing_session['session_token']
+        if existing:
+            session_token = existing['session_token']
         else:
-            # Create new session
-            user_agent = request.user_agent.string if request.user_agent else 'Unknown'
-            session_token = SessionManager.create_session(
-                user['id'],
-                user_agent,
-                request.remote_addr
-            )
-            
+            session_token = SessionManager.create_session(user['id'], str(request.user_agent), request.remote_addr)
             if not session_token:
                 return jsonify({'error': 'Failed to create session'}), 500
         
-        response = make_response(jsonify({
-            'success': True,
-            'user': {
-                'id': user['id'],
-                'email': user['email'],
-                'username': user['username']
-            }
-        }))
-        
-        # Set session cookie
-        response.set_cookie(
-            'session_token',
-            session_token,
-            max_age=Config.SESSION_EXPIRY_HOURS * 3600,
-            httponly=True,
-            samesite='Lax',
-            secure=True,
-            domain='indotag.site'  # Important for cross-subdomain
-        )
-        
+        response = make_response(jsonify({'success': True, 'user': {'id': user['id'], 'email': user['email'], 'username': user['username']}}))
+        response.set_cookie('session_token', session_token, max_age=Config.SESSION_EXPIRY_HOURS * 3600,
+                           httponly=True, samesite='Lax', secure=True, domain='indotag.site')
         return response
-        
     except Exception as e:
-        print(f"Error in login: {e}")
+        print(f"Error: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/auth/logout', methods=['POST'])
 def logout():
-    """Logout user"""
     session_token = request.cookies.get('session_token')
-    
     if session_token:
         SessionManager.delete_session(session_token)
-    
     response = make_response(jsonify({'success': True}))
     response.delete_cookie('session_token', domain='indotag.site')
-    
     return response
 
-@app.route('/api/auth/me', methods=['GET', 'OPTIONS'])
+@app.route('/api/auth/me', methods=['GET'])
 def get_current_user():
-    """Get current authenticated user"""
-    # Handle preflight request
-    if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', 'https://www.indotag.site')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Cookie')
-        return response
-    
     user = get_user_from_session()
-    
-    response = make_response(jsonify({
-        'authenticated': bool(user),
-        'user': {
-            'id': user['id'],
-            'email': user['email'],
-            'username': user['username'],
-            'telegram_id': user['telegram_id'],
-            'full_name': user.get('full_name')
-        } if user else None
-    }))
-    
-    response.headers.add('Access-Control-Allow-Origin', 'https://www.indotag.site')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    
-    if not user:
-        return response, 401
-    
-    return response
+    if user:
+        return jsonify({'authenticated': True, 'user': {
+            'id': user['id'], 'email': user['email'], 'username': user['username'],
+            'telegram_id': user['telegram_id'], 'full_name': user.get('full_name')
+        }})
+    return jsonify({'authenticated': False}), 401
 
-# =====================================================
-# Marketplace Routes
-# =====================================================
-
+# ==================== MARKETPLACE ====================
 @app.route('/api/usernames', methods=['GET'])
 def get_usernames():
-    """Get all available usernames"""
     try:
         platform = request.args.get('platform')
         search = request.args.get('search')
         sort = request.args.get('sort', 'newest')
-        
         usernames = UsernameService.get_all_usernames(platform, search, sort)
-        
-        # Format response
-        result = []
-        for username in usernames:
-            result.append({
-                'id': username['id'],
-                'username': username['username'],
-                'platform': username['platform'],
-                'price': float(username['price']),
-                'description': username['description'],
-                'seller_username': username['seller_username'],
-                'created_at': username['created_at'].isoformat() if username['created_at'] else None
-            })
-        
-        response = jsonify(result)
-        response.headers.add('Access-Control-Allow-Origin', 'https://www.indotag.site')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-        
+        result = [{'id': u['id'], 'username': u['username'], 'platform': u['platform'],
+                   'price': float(u['price']), 'description': u['description'],
+                   'seller_username': u['seller_username'],
+                   'created_at': u['created_at'].isoformat() if u['created_at'] else None} for u in usernames]
+        return jsonify(result)
     except Exception as e:
-        print(f"Error getting usernames: {e}")
+        print(f"Error: {e}")
         return jsonify({'error': 'Failed to load usernames'}), 500
-
-@app.route('/api/usernames/<int:username_id>', methods=['GET'])
-def get_username_detail(username_id):
-    """Get username detail"""
-    try:
-        username = UsernameService.get_username_by_id(username_id)
-        
-        if not username:
-            return jsonify({'error': 'Username not found'}), 404
-        
-        return jsonify({
-            'id': username['id'],
-            'username': username['username'],
-            'platform': username['platform'],
-            'price': float(username['price']),
-            'description': username['description'],
-            'status': username['status'],
-            'seller': {
-                'username': username['seller_username'],
-                'full_name': username['seller_name'],
-                'email': username['seller_email']
-            },
-            'created_at': username['created_at'].isoformat() if username['created_at'] else None
-        })
-        
-    except Exception as e:
-        print(f"Error getting username detail: {e}")
-        return jsonify({'error': 'Failed to load username detail'}), 500
 
 @app.route('/api/usernames', methods=['POST'])
 def create_username():
-    """Create new username listing (requires authentication)"""
-    try:
-        user = get_user_from_session()
-        if not user:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        data = request.json
-        username = data.get('username')
-        platform = data.get('platform')
-        price = data.get('price')
-        description = data.get('description')
-        
-        if not all([username, platform, price]):
-            return jsonify({'error': 'Username, platform, and price are required'}), 400
-        
-        username_id = UsernameService.create_username(
-            username, platform, price, user['id'], description
-        )
-        
-        if not username_id:
-            return jsonify({'error': 'Failed to create listing'}), 500
-        
-        return jsonify({
-            'success': True,
-            'message': 'Username listed successfully',
-            'id': username_id
-        }), 201
-        
-    except Exception as e:
-        print(f"Error creating username: {e}")
+    user = get_user_from_session()
+    if not user:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    data = request.json
+    username = data.get('username')
+    platform = data.get('platform')
+    price = data.get('price')
+    description = data.get('description')
+    
+    if not all([username, platform, price]):
+        return jsonify({'error': 'Username, platform, and price are required'}), 400
+    
+    username_id = UsernameService.create_username(username, platform, price, user['id'], description)
+    if not username_id:
         return jsonify({'error': 'Failed to create listing'}), 500
+    
+    return jsonify({'success': True, 'message': 'Username listed successfully', 'id': username_id}), 201
 
 @app.route('/api/usernames/<int:username_id>/buy', methods=['POST'])
 def buy_username(username_id):
-    """Buy a username (requires authentication)"""
+    user = get_user_from_session()
+    if not user:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    username = UsernameService.get_username_by_id(username_id)
+    if not username:
+        return jsonify({'error': 'Username not found'}), 404
+    if username['status'] != 'available':
+        return jsonify({'error': 'Username not available'}), 400
+    if username['seller_id'] == user['id']:
+        return jsonify({'error': 'Cannot buy your own username'}), 400
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
     try:
-        user = get_user_from_session()
-        if not user:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        username = UsernameService.get_username_by_id(username_id)
-        
-        if not username:
-            return jsonify({'error': 'Username not found'}), 404
-        
-        if username['status'] != 'available':
-            return jsonify({'error': 'Username not available'}), 400
-        
-        if username['seller_id'] == user['id']:
-            return jsonify({'error': 'Cannot buy your own username'}), 400
-        
-        # Create transaction
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        try:
-            # Update username status
-            cursor.execute("""
-                UPDATE usernames 
-                SET status = 'pending', buyer_id = %s 
-                WHERE id = %s AND status = 'available'
-            """, (user['id'], username_id))
-            
-            if cursor.rowcount == 0:
-                return jsonify({'error': 'Username no longer available'}), 400
-            
-            # Create transaction record
-            cursor.execute("""
-                INSERT INTO transactions (username_id, buyer_id, seller_id, amount, status)
-                VALUES (%s, %s, %s, %s, 'pending')
-            """, (username_id, user['id'], username['seller_id'], username['price']))
-            
-            conn.commit()
-            
-            return jsonify({
-                'success': True,
-                'message': 'Purchase initiated. Please complete payment.'
-            })
-            
-        except Exception as e:
-            conn.rollback()
-            print(f"Error in buy transaction: {e}")
-            return jsonify({'error': 'Failed to process purchase'}), 500
-        finally:
-            cursor.close()
-            conn.close()
-        
+        cursor.execute("UPDATE usernames SET status = 'pending', buyer_id = %s WHERE id = %s AND status = 'available'", (user['id'], username_id))
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Username no longer available'}), 400
+        cursor.execute("INSERT INTO transactions (username_id, buyer_id, seller_id, amount, status) VALUES (%s, %s, %s, %s, 'pending')",
+                      (username_id, user['id'], username['seller_id'], username['price']))
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Purchase initiated. Please complete payment.'})
     except Exception as e:
-        print(f"Error buying username: {e}")
+        conn.rollback()
+        print(f"Error: {e}")
         return jsonify({'error': 'Failed to process purchase'}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
-    """Get marketplace statistics"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
-        
-        # Get total available usernames
         cursor.execute("SELECT COUNT(*) as count FROM usernames WHERE status = 'available'")
         total_usernames = cursor.fetchone()['count']
-        
-        # Get total users
         cursor.execute("SELECT COUNT(*) as count FROM users")
         total_users = cursor.fetchone()['count']
-        
-        # Get total completed transactions
         cursor.execute("SELECT COUNT(*) as count FROM transactions WHERE status = 'completed'")
         total_transactions = cursor.fetchone()['count']
-        
         cursor.close()
         conn.close()
-        
-        response = jsonify({
-            'total_usernames': total_usernames,
-            'total_users': total_users,
-            'total_transactions': total_transactions
-        })
-        response.headers.add('Access-Control-Allow-Origin', 'https://www.indotag.site')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-        
+        return jsonify({'total_usernames': total_usernames, 'total_users': total_users, 'total_transactions': total_transactions})
     except Exception as e:
-        print(f"Error getting stats: {e}")
-        return jsonify({
-            'total_usernames': 0,
-            'total_users': 0,
-            'total_transactions': 0
-        })
-
-# =====================================================
-# Error Handlers
-# =====================================================
-
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'Resource not found'}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    return jsonify({'error': 'Internal server error'}), 500
-
-# =====================================================
-# Main
-# =====================================================
+        print(f"Error: {e}")
+        return jsonify({'total_usernames': 0, 'total_users': 0, 'total_transactions': 0})
 
 if __name__ == '__main__':
-    # Make sure directories exist
     os.makedirs('css', exist_ok=True)
     os.makedirs('js', exist_ok=True)
-    os.makedirs('static/img', exist_ok=True)
+    os.makedirs('html', exist_ok=True)
     os.makedirs('services', exist_ok=True)
-    
+    os.makedirs('database', exist_ok=True)
+    os.makedirs('static/img', exist_ok=True)
     print(f"Starting Indotag Marketplace on {Config.HOST}:{Config.PORT}")
-    print(f"Access the website at: http://{Config.HOST}:{Config.PORT}")
-    print(f"Telegram Mini App at: http://{Config.HOST}:{Config.PORT}/miniapp")
-    
-    app.run(
-        host=Config.HOST,
-        port=Config.PORT,
-        debug=True
-    )
+    app.run(host=Config.HOST, port=Config.PORT, debug=True)

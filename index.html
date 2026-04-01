@@ -2,339 +2,88 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <meta name="theme-color" content="#0088cc">
-    <title>Indotag Marketplace | Jual Beli Username Premium</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Indotag Marketplace</title>
     <link rel="stylesheet" href="/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div id="app">
-        <!-- Loading Screen -->
-        <div id="loading-screen" class="loading-screen">
-            <div class="loader"></div>
-            <p>Memuat Indotag Marketplace...</p>
-        </div>
-
-        <!-- Main Content -->
-        <div id="main-content" style="display: none;">
-            <!-- Header dengan scroll behavior -->
-            <header id="main-header" class="main-header">
-                <div class="header-container">
-                    <div class="logo">
-                        <img src="/static/img/logo.svg" alt="Indotag" class="logo-img" 
-                            onerror="this.style.display='none'; this.parentElement.querySelector('.logo-text').style.marginLeft='0'">
-                        <span class="logo-text">Indotag</span>
-                    </div>
-                    
-                    <!-- Mobile Menu Toggle -->
-                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    
-                    <!-- Navigation -->
-                    <nav class="nav-menu" id="navMenu">
-                        <ul class="nav-list">
-                            <li><a href="#home" class="nav-link active" data-page="home"><i class="fas fa-home"></i> <span>Beranda</span></a></li>
-                            <li><a href="#marketplace" class="nav-link" data-page="marketplace"><i class="fas fa-store"></i> <span>Marketplace</span></a></li>
-                            <li><a href="#pricing" class="nav-link" data-page="pricing"><i class="fas fa-tag"></i> <span>Harga</span></a></li>
-                            <li><a href="#how-it-works" class="nav-link" data-page="how-it-works"><i class="fas fa-question-circle"></i> <span>Cara Kerja</span></a></li>
-                            <li><a href="#privacy" class="nav-link" data-page="privacy"><i class="fas fa-shield-alt"></i> <span>Privacy</span></a></li>
-                        </ul>
-                    </nav>
-                    
-                    <!-- User Section -->
-                    <div class="user-section" id="userSection">
-                        <div class="user-info" id="userInfo" style="display: none;">
-                            <img src="" alt="Avatar" class="user-avatar" id="userAvatar">
-                            <span class="user-name" id="userName"></span>
-                            <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i></button>
-                        </div>
-                        <button class="login-btn" id="loginBtn" style="display: none;">
-                            <i class="fas fa-sign-in-alt"></i> Login
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Scroll Container (mencegah refresh saat scroll ke atas) -->
-            <div class="scroll-container" id="scrollContainer">
-                <div class="content-wrapper">
-                    <!-- Home Page -->
-                    <div id="home-page" class="page active">
-                        <div class="hero-section">
-                            <div class="hero-content">
-                                <h1 class="hero-title">Marketplace Username <span class="gradient-text">Premium</span></h1>
-                                <p class="hero-description">Jual & Beli username Telegram, Instagram, Twitter, dan platform lainnya dengan aman dan terpercaya</p>
-                                <div class="hero-buttons">
-                                    <button class="btn btn-primary" id="exploreMarketplaceBtn">
-                                        <i class="fas fa-store"></i> Explore Marketplace
-                                    </button>
-                                    <button class="btn btn-secondary" id="howItWorksBtn">
-                                        <i class="fas fa-play"></i> Cara Kerja
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="hero-stats">
-                                <div class="stat-item">
-                                    <span class="stat-number" id="totalUsernames">0</span>
-                                    <span class="stat-label">Username Tersedia</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-number" id="totalUsers">0</span>
-                                    <span class="stat-label">Pengguna Aktif</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-number" id="totalTransactions">0</span>
-                                    <span class="stat-label">Transaksi Berhasil</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="features-section">
-                            <h2 class="section-title">Kenapa Pilih Indotag?</h2>
-                            <div class="features-grid">
-                                <div class="feature-card">
-                                    <i class="fas fa-shield-alt feature-icon"></i>
-                                    <h3>Aman & Terpercaya</h3>
-                                    <p>Sistem escrow dan verifikasi penjual untuk keamanan transaksi</p>
-                                </div>
-                                <div class="feature-card">
-                                    <i class="fas fa-bolt feature-icon"></i>
-                                    <h3>Proses Cepat</h3>
-                                    <p>Transaksi instan dengan sistem otomatis</p>
-                                </div>
-                                <div class="feature-card">
-                                    <i class="fas fa-hand-holding-usd feature-icon"></i>
-                                    <h3>Harga Kompetitif</h3>
-                                    <p>Marketplace dengan harga terbaik dari berbagai seller</p>
-                                </div>
-                                <div class="feature-card">
-                                    <i class="fab fa-telegram feature-icon"></i>
-                                    <h3>Integrasi Telegram</h3>
-                                    <p>Akses langsung melalui Telegram Mini App</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Marketplace Page -->
-                    <div id="marketplace-page" class="page">
-                        <div class="marketplace-header">
-                            <h2 class="page-title">Marketplace Username</h2>
-                            <div class="filters">
-                                <select id="platformFilter" class="filter-select">
-                                    <option value="all">Semua Platform</option>
-                                    <option value="telegram">Telegram</option>
-                                    <option value="instagram">Instagram</option>
-                                    <option value="twitter">Twitter/X</option>
-                                    <option value="tiktok">TikTok</option>
-                                </select>
-                                <select id="sortFilter" class="filter-select">
-                                    <option value="newest">Terbaru</option>
-                                    <option value="price_low">Harga Terendah</option>
-                                    <option value="price_high">Harga Tertinggi</option>
-                                </select>
-                                <div class="search-box">
-                                    <i class="fas fa-search"></i>
-                                    <input type="text" id="searchUsername" placeholder="Cari username...">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="marketplace-grid" id="marketplaceGrid">
-                            <!-- Username cards will be loaded here -->
-                            <div class="loading-spinner">
-                                <i class="fas fa-spinner fa-spin"></i>
-                                <p>Memuat username...</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pricing Page -->
-                    <div id="pricing-page" class="page">
-                        <h2 class="page-title">Harga & Biaya</h2>
-                        <div class="pricing-grid">
-                            <div class="pricing-card">
-                                <div class="pricing-header">
-                                    <h3>Basic</h3>
-                                    <div class="price">Gratis</div>
-                                </div>
-                                <ul class="pricing-features">
-                                    <li><i class="fas fa-check"></i> Listing username gratis</li>
-                                    <li><i class="fas fa-check"></i> Maksimal 5 username aktif</li>
-                                    <li><i class="fas fa-check"></i> Komisi 10% per transaksi</li>
-                                </ul>
-                            </div>
-                            <div class="pricing-card featured">
-                                <div class="pricing-badge">Populer</div>
-                                <div class="pricing-header">
-                                    <h3>Premium</h3>
-                                    <div class="price">Rp 50.000<span>/bulan</span></div>
-                                </div>
-                                <ul class="pricing-features">
-                                    <li><i class="fas fa-check"></i> Unlimited listing</li>
-                                    <li><i class="fas fa-check"></i> Prioritas pencarian</li>
-                                    <li><i class="fas fa-check"></i> Komisi 5% per transaksi</li>
-                                    <li><i class="fas fa-check"></i> Badge verified seller</li>
-                                </ul>
-                                <button class="btn btn-primary">Upgrade Sekarang</button>
-                            </div>
-                            <div class="pricing-card">
-                                <div class="pricing-header">
-                                    <h3>Enterprise</h3>
-                                    <div class="price">Rp 200.000<span>/bulan</span></div>
-                                </div>
-                                <ul class="pricing-features">
-                                    <li><i class="fas fa-check"></i> Semua fitur Premium</li>
-                                    <li><i class="fas fa-check"></i> API access</li>
-                                    <li><i class="fas fa-check"></i> Komisi 3% per transaksi</li>
-                                    <li><i class="fas fa-check"></i> Support prioritas 24/7</li>
-                                </ul>
-                                <button class="btn btn-primary">Hubungi Kami</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- How It Works Page -->
-                    <div id="how-it-works-page" class="page">
-                        <h2 class="page-title">Cara Kerja Indotag</h2>
-                        <div class="steps-container">
-                            <div class="step">
-                                <div class="step-number">1</div>
-                                <div class="step-content">
-                                    <h3>Daftar Akun</h3>
-                                    <p>Login dengan Telegram atau daftar menggunakan email</p>
-                                </div>
-                            </div>
-                            <div class="step">
-                                <div class="step-number">2</div>
-                                <div class="step-content">
-                                    <h3>Jual Username</h3>
-                                    <p>List username kamu dengan harga yang diinginkan</p>
-                                </div>
-                            </div>
-                            <div class="step">
-                                <div class="step-number">3</div>
-                                <div class="step-content">
-                                    <h3>Beli Username</h3>
-                                    <p>Cari username favorit dan lakukan pembelian</p>
-                                </div>
-                            </div>
-                            <div class="step">
-                                <div class="step-number">4</div>
-                                <div class="step-content">
-                                    <h3>Transaksi Aman</h3>
-                                    <p>Sistem escrow menjamin keamanan pembayaran</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Privacy Page -->
-                    <div id="privacy-page" class="page">
-                        <h2 class="page-title">Kebijakan Privasi</h2>
-                        <div class="privacy-content">
-                            <section>
-                                <h3>Informasi yang Kami Kumpulkan</h3>
-                                <p>Kami mengumpulkan informasi yang Anda berikan saat mendaftar, termasuk email, username Telegram, dan data profil lainnya.</p>
-                            </section>
-                            <section>
-                                <h3>Penggunaan Informasi</h3>
-                                <p>Informasi digunakan untuk memproses transaksi, mengamankan akun, dan meningkatkan layanan kami.</p>
-                            </section>
-                            <section>
-                                <h3>Perlindungan Data</h3>
-                                <p>Kami menggunakan enkripsi dan praktik keamanan terbaik untuk melindungi data pengguna.</p>
-                            </section>
-                            <section>
-                                <h3>Cookie</h3>
-                                <p>Kami menggunakan cookie untuk menjaga sesi login dan meningkatkan pengalaman pengguna.</p>
-                            </section>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <footer class="main-footer">
-                    <div class="footer-content">
-                        <div class="footer-section">
-                            <h4>Indotag</h4>
-                            <p>Marketplace username premium terpercaya di Indonesia</p>
-                        </div>
-                        <div class="footer-section">
-                            <h4>Link Penting</h4>
-                            <ul>
-                                <li><a href="#privacy">Kebijakan Privasi</a></li>
-                                <li><a href="#pricing">Harga</a></li>
-                                <li><a href="#how-it-works">Cara Kerja</a></li>
-                            </ul>
-                        </div>
-                        <div class="footer-section">
-                            <h4>Kontak</h4>
-                            <p><i class="fab fa-telegram"></i> @indotag_support</p>
-                            <p><i class="fas fa-envelope"></i> support@indotag.site</p>
-                        </div>
-                    </div>
-                    <div class="footer-bottom">
-                        <p>&copy; 2024 Indotag Marketplace. All rights reserved.</p>
-                    </div>
-                </footer>
-            </div>
-        </div>
-
-        <!-- Login Modal (for browser users) -->
-        <div id="loginModal" class="modal">
-            <div class="modal-content">
-                <span class="close-modal">&times;</span>
-                <h2>Login ke Indotag</h2>
-                <form id="loginForm">
-                    <div class="form-group">
-                        <label>Email / Username</label>
-                        <input type="text" id="loginEmail" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="loginPassword" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block">Login</button>
-                </form>
-                <div class="modal-footer">
-                    <p>Belum punya akun? <a href="#" id="showRegister">Daftar sekarang</a></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Register Modal -->
-        <div id="registerModal" class="modal">
-            <div class="modal-content">
-                <span class="close-modal">&times;</span>
-                <h2>Daftar Akun Baru</h2>
-                <form id="registerForm">
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="regEmail" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Username</label>
-                        <input type="text" id="regUsername">
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="regPassword" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Konfirmasi Password</label>
-                        <input type="password" id="regConfirmPassword" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block">Daftar</button>
-                </form>
-                <div class="modal-footer">
-                    <p>Sudah punya akun? <a href="#" id="showLogin">Login disini</a></p>
-                </div>
-            </div>
-        </div>
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader"></div>
+        <p>Memuat Indotag Marketplace...</p>
     </div>
+
+    <div id="app" style="display: none;">
+        <header class="header">
+            <div class="container">
+                <div class="logo">Indotag</div>
+                <button class="mobile-toggle" id="mobileToggle"><i class="fas fa-bars"></i></button>
+                <nav class="nav" id="nav">
+                    <a href="#" class="nav-link active" data-page="home">Beranda</a>
+                    <a href="#" class="nav-link" data-page="marketplace">Marketplace</a>
+                    <a href="#" class="nav-link" data-page="pricing">Harga</a>
+                    <a href="#" class="nav-link" data-page="how-it-works">Cara Kerja</a>
+                    <a href="#" class="nav-link" data-page="privacy">Privacy</a>
+                </nav>
+                <div class="user-section">
+                    <div id="userInfo" style="display: none;">
+                        <span id="userName"></span>
+                        <button id="logoutBtn"><i class="fas fa-sign-out-alt"></i></button>
+                    </div>
+                    <button id="loginBtn" class="btn-login">Login</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div id="home-page" class="page active">
+                <div class="hero">
+                    <h1>Marketplace Username <span class="gradient">Premium</span></h1>
+                    <p>Jual & Beli username Telegram, Instagram, Twitter dengan aman dan terpercaya</p>
+                    <div class="hero-buttons">
+                        <button class="btn btn-primary" id="exploreBtn">Explore Marketplace</button>
+                        <button class="btn btn-secondary" id="howBtn">Cara Kerja</button>
+                    </div>
+                    <div class="stats">
+                        <div><span id="totalUsernames">0</span><label>Username</label></div>
+                        <div><span id="totalUsers">0</span><label>Pengguna</label></div>
+                        <div><span id="totalTransactions">0</span><label>Transaksi</label></div>
+                    </div>
+                </div>
+                <div class="features">
+                    <h2>Kenapa Pilih Indotag?</h2>
+                    <div class="features-grid">
+                        <div class="feature"><i class="fas fa-shield-alt"></i><h3>Aman & Terpercaya</h3><p>Sistem escrow untuk keamanan transaksi</p></div>
+                        <div class="feature"><i class="fas fa-bolt"></i><h3>Proses Cepat</h3><p>Transaksi instan dengan sistem otomatis</p></div>
+                        <div class="feature"><i class="fas fa-hand-holding-usd"></i><h3>Harga Kompetitif</h3><p>Harga terbaik dari berbagai seller</p></div>
+                        <div class="feature"><i class="fab fa-telegram"></i><h3>Integrasi Telegram</h3><p>Akses langsung melalui Telegram Mini App</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="marketplace-page" class="page">
+                <h2>Marketplace Username</h2>
+                <div class="filters">
+                    <select id="platformFilter"><option value="all">Semua Platform</option><option value="telegram">Telegram</option><option value="instagram">Instagram</option><option value="twitter">Twitter</option></select>
+                    <select id="sortFilter"><option value="newest">Terbaru</option><option value="price_low">Harga Terendah</option><option value="price_high">Harga Tertinggi</option></select>
+                    <input type="text" id="searchInput" placeholder="Cari username...">
+                </div>
+                <div id="marketplaceGrid" class="marketplace-grid"><div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><p>Memuat username...</p></div></div>
+            </div>
+
+            <div id="pricing-page" class="page"><h2>Harga & Biaya</h2><div class="pricing-grid"><div class="pricing-card"><h3>Basic</h3><div class="price">Gratis</div><ul><li><i class="fas fa-check"></i> Listing gratis</li><li><i class="fas fa-check"></i> Maksimal 5 username</li><li><i class="fas fa-check"></i> Komisi 10%</li></ul></div><div class="pricing-card featured"><div class="badge">Populer</div><h3>Premium</h3><div class="price">Rp 50.000<span>/bulan</span></div><ul><li><i class="fas fa-check"></i> Unlimited listing</li><li><i class="fas fa-check"></i> Prioritas pencarian</li><li><i class="fas fa-check"></i> Komisi 5%</li></ul><button class="btn">Upgrade</button></div><div class="pricing-card"><h3>Enterprise</h3><div class="price">Rp 200.000<span>/bulan</span></div><ul><li><i class="fas fa-check"></i> Semua fitur Premium</li><li><i class="fas fa-check"></i> API access</li><li><i class="fas fa-check"></i> Komisi 3%</li></ul><button class="btn">Hubungi</button></div></div></div>
+
+            <div id="how-it-works-page" class="page"><h2>Cara Kerja Indotag</h2><div class="steps"><div class="step"><div class="step-num">1</div><div><h3>Daftar Akun</h3><p>Login dengan Telegram atau daftar email</p></div></div><div class="step"><div class="step-num">2</div><div><h3>Jual Username</h3><p>List username dengan harga yang diinginkan</p></div></div><div class="step"><div class="step-num">3</div><div><h3>Beli Username</h3><p>Cari username favorit dan lakukan pembelian</p></div></div><div class="step"><div class="step-num">4</div><div><h3>Transaksi Aman</h3><p>Sistem escrow menjamin keamanan</p></div></div></div></div>
+
+            <div id="privacy-page" class="page"><h2>Kebijakan Privasi</h2><div class="privacy"><section><h3>Informasi yang Kami Kumpulkan</h3><p>Email, username Telegram, dan data profil lainnya saat mendaftar.</p></section><section><h3>Penggunaan Informasi</h3><p>Untuk memproses transaksi, mengamankan akun, dan meningkatkan layanan.</p></section></div></div>
+        </main>
+
+        <footer class="footer"><div class="container"><p>&copy; 2024 Indotag Marketplace. All rights reserved.</p></div></footer>
+    </div>
+
+    <div id="loginModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h2>Login</h2><form id="loginForm"><input type="text" id="loginEmail" placeholder="Email / Username" required><input type="password" id="loginPassword" placeholder="Password" required><button type="submit" class="btn btn-primary btn-block">Login</button></form><p>Belum punya akun? <a href="#" id="showRegister">Daftar</a></p></div></div>
+    <div id="registerModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h2>Daftar</h2><form id="registerForm"><input type="email" id="regEmail" placeholder="Email" required><input type="text" id="regUsername" placeholder="Username"><input type="password" id="regPassword" placeholder="Password" required><input type="password" id="regConfirm" placeholder="Konfirmasi Password" required><button type="submit" class="btn btn-primary btn-block">Daftar</button></form><p>Sudah punya akun? <a href="#" id="showLogin">Login</a></p></div></div>
 
     <script src="/js/script.js"></script>
 </body>
