@@ -6,7 +6,7 @@ import os
 app = Flask(__name__, 
             template_folder='.',
             static_folder='.',
-            static_url_path='')
+            static_url_path='/static')
 app.secret_key = os.urandom(24)
 
 # Database configuration
@@ -15,21 +15,24 @@ app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = 'Asdf1234_'
 app.config['MYSQL_DB'] = 'indotag'
 
-# Route untuk static files
+# Route untuk static files - PERBAIKAN
 @app.route('/css/<path:filename>')
 def serve_css(filename):
     """Serve CSS files"""
-    return send_from_directory('css', filename)
+    try:
+        return send_from_directory('css', filename)
+    except Exception as e:
+        print(f"Error serving CSS {filename}: {e}")
+        return "File not found", 404
 
 @app.route('/js/<path:filename>')
 def serve_js(filename):
     """Serve JS files"""
-    return send_from_directory('js', filename)
-
-@app.route('/html/<path:filename>')
-def serve_html(filename):
-    """Serve HTML files"""
-    return send_from_directory('html', filename)
+    try:
+        return send_from_directory('js', filename)
+    except Exception as e:
+        print(f"Error serving JS {filename}: {e}")
+        return "File not found", 404
 
 @app.route('/')
 def index():
@@ -39,51 +42,13 @@ def index():
 @app.route('/miniapp')
 def miniapp():
     """Halaman MiniApp Telegram"""
-    # Perbaikan: menggunakan path yang benar ke file miniapp.html di folder html
     return render_template('html/miniapp.html')
 
+# API endpoints (optional, tapi jangan dihapus biar ga error 404)
 @app.route('/api/telegram/auth', methods=['POST'])
 def telegram_auth():
-    """Endpoint untuk autentikasi Telegram"""
-    try:
-        data = request.json
-        telegram_data = data.get('telegram_data', {})
-        
-        # Verify Telegram user
-        user_data = verify_telegram_user(telegram_data)
-        
-        if user_data:
-            session['telegram_user'] = user_data
-            
-            conn = get_db_connection()
-            if conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO users (telegram_id, username, first_name, last_name, photo_url, last_login)
-                    VALUES (%s, %s, %s, %s, %s, NOW())
-                    ON DUPLICATE KEY UPDATE
-                    username = VALUES(username),
-                    first_name = VALUES(first_name),
-                    last_name = VALUES(last_name),
-                    photo_url = VALUES(photo_url),
-                    last_login = NOW()
-                """, (user_data['id'], user_data.get('username', ''), 
-                      user_data.get('first_name', ''), user_data.get('last_name', ''),
-                      user_data.get('photo_url', '')))
-                
-                conn.commit()
-                cursor.close()
-                conn.close()
-            
-            return jsonify({
-                'success': True,
-                'user': user_data
-            })
-        
-        return jsonify({'success': False, 'error': 'Invalid telegram data'}), 401
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    """Endpoint untuk autentikasi Telegram - Opsional"""
+    return jsonify({'success': False, 'error': 'Use Telegram WebApp directly'}), 200
 
 @app.route('/api/user/profile')
 def user_profile():
