@@ -10,7 +10,6 @@ function initMiniApp() {
     if (window.Telegram && window.Telegram.WebApp) {
         tg = window.Telegram.WebApp;
         
-        // Safe call to Telegram methods
         try {
             tg.ready();
             tg.expand();
@@ -19,21 +18,16 @@ function initMiniApp() {
             console.error('Error initializing Telegram:', e);
         }
         
-        // Get user data
+        // LANGSUNG AMBIL DATA USER DARI TELEGRAM, GA PAKE API
         try {
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 telegramUser = tg.initDataUnsafe.user;
-                authenticateUser();
-            } else if (tg.initData) {
-                const params = new URLSearchParams(tg.initData);
-                const userData = params.get('user');
-                if (userData) {
-                    telegramUser = JSON.parse(decodeURIComponent(userData));
-                    authenticateUser();
-                } else {
-                    loadDemoProfile();
-                }
+                console.log('User data from Telegram:', telegramUser);
+                // LANGSUNG TAMPILIN, GA USAH AUTH KE BACKEND
+                displayUserProfile();
+                showToast(`Halo ${telegramUser.first_name || telegramUser.username}!`);
             } else {
+                console.log('No user data found');
                 loadDemoProfile();
             }
         } catch(e) {
@@ -50,68 +44,31 @@ function initMiniApp() {
     loadProducts();
 }
 
-// Authenticate user with backend
-async function authenticateUser() {
-    try {
-        const response = await fetch('/api/telegram/auth', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                telegram_data: telegramUser
-            })
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-            telegramUser = result.user;
-            displayUserProfile();
-            showToast(`Selamat datang ${telegramUser.first_name || 'Pengguna'}!`);
-        } else {
-            loadDemoProfile();
-        }
-    } catch (error) {
-        console.error('Auth error:', error);
-        loadDemoProfile();
-    }
-}
-
-// Display user profile
+// Display user profile - LANGSUNG DARI DATA TELEGRAM
 function displayUserProfile() {
     const userSection = document.getElementById('userSection');
     if (userSection && telegramUser) {
-        // Gunakan data URL atau emoji sebagai fallback gambar
-        const avatarUrl = telegramUser.photo_url || getDefaultAvatar(telegramUser.first_name);
+        // Buat avatar dari inisial nama
+        const initial = telegramUser.first_name ? telegramUser.first_name.charAt(0).toUpperCase() : 
+                       (telegramUser.username ? telegramUser.username.charAt(0).toUpperCase() : 'U');
+        const colors = ['#0088cc', '#34a853', '#ea4335', '#fbbc04', '#9c27b0'];
+        const colorIndex = (telegramUser.id || Math.floor(Math.random() * colors.length)) % colors.length;
+        const bgColor = colors[colorIndex];
+        
+        const avatarSvg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Crect width='60' height='60' fill='${bgColor}'/%3E%3Ctext x='30' y='40' font-size='28' text-anchor='middle' fill='white' font-weight='bold'%3E${initial}%3C/text%3E%3C/svg%3E`;
         
         userSection.innerHTML = `
             <div class="user-profile">
-                <div class="user-avatar-wrapper">
-                    ${telegramUser.photo_url ? 
-                        `<img src="${avatarUrl}" alt="Profile" class="user-avatar" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\' viewBox=\'0 0 24 24\' fill=\'%230088cc\'%3E%3Cpath d=\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\'/%3E%3C/svg%3E'">` :
-                        `<div class="user-avatar-emoji">${getAvatarEmoji(telegramUser.first_name)}</div>`
-                    }
-                </div>
+                <img src="${avatarSvg}" alt="Profile" class="user-avatar" style="width:60px;height:60px;border-radius:50%;">
                 <div class="user-info">
                     <div class="user-name">${escapeHtml(telegramUser.first_name || '')} ${escapeHtml(telegramUser.last_name || '')}</div>
-                    <div class="user-username">@${escapeHtml(telegramUser.username || 'username')}</div>
-                    <button class="logout-btn" onclick="logout()">Logout</button>
+                    <div class="user-username">@${escapeHtml(telegramUser.username || 'unknown')}</div>
+                    <div class="user-id" style="font-size:12px;color:#999;">ID: ${telegramUser.id || ''}</div>
+                    <button class="logout-btn" onclick="closeMiniApp()">Tutup</button>
                 </div>
             </div>
         `;
     }
-}
-
-// Get default avatar based on name
-function getDefaultAvatar(name) {
-    return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 24 24' fill='%230088cc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E`;
-}
-
-// Get avatar emoji
-function getAvatarEmoji(name) {
-    if (!name) return '👤';
-    const firstChar = name.charAt(0).toUpperCase();
-    return firstChar;
 }
 
 // Load demo profile
@@ -120,13 +77,13 @@ function loadDemoProfile() {
     if (userSection) {
         userSection.innerHTML = `
             <div class="user-profile">
-                <div class="user-avatar-emoji" style="width:60px;height:60px;background:#0088cc;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;color:white;">
+                <div style="width:60px;height:60px;background:#0088cc;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;color:white;">
                     👤
                 </div>
                 <div class="user-info">
                     <div class="user-name">Pengunjung</div>
-                    <div class="user-username">Mode Demo</div>
-                    <button class="logout-btn" onclick="loginDemo()">Login via Telegram</button>
+                    <div class="user-username">Buka di Telegram</div>
+                    <button class="logout-btn" onclick="alert('Buka melalui Telegram untuk login otomatis')">Info</button>
                 </div>
             </div>
         `;
@@ -153,7 +110,7 @@ async function loadProducts() {
             <div class="empty-state">
                 <div class="empty-icon">📦</div>
                 <p>Gagal memuat produk</p>
-                <small style="color:#999">Silakan coba lagi nanti</small>
+                <small>Silakan coba lagi nanti</small>
             </div>
         `;
     }
@@ -189,14 +146,13 @@ function displayProducts(products) {
     `).join('');
 }
 
-// Get product icon based on name
+// Get product icon
 function getProductIcon(name) {
     const icons = {
         'Premium': '⭐',
         'Standard': '🌟',
         'Basic': '✨'
     };
-    
     for (const [key, icon] of Object.entries(icons)) {
         if (name && name.includes(key)) return icon;
     }
@@ -205,7 +161,7 @@ function getProductIcon(name) {
 
 // Buy product
 function buyProduct(productId) {
-    if (tg && telegramUser && telegramUser.id) {
+    if (tg) {
         try {
             tg.showAlert('Fitur pembelian akan segera hadir!');
             if (tg.HapticFeedback) {
@@ -215,7 +171,7 @@ function buyProduct(productId) {
             showToast('Fitur pembelian akan segera hadir!');
         }
     } else {
-        showToast('Silakan login melalui Telegram terlebih dahulu');
+        showToast('Silakan akses melalui Telegram');
     }
 }
 
@@ -224,8 +180,8 @@ function showFeature(feature) {
     const messages = {
         marketplace: 'Fitur marketplace akan segera hadir!',
         pricing: 'Lihat paket harga spesial untuk Anda',
-        profile: 'Lengkapi profil Anda untuk pengalaman terbaik',
-        support: 'Hubungi support di support@indotag.site'
+        profile: 'Profil Anda sudah terhubung dengan Telegram',
+        support: 'Hubungi support@indotag.site'
     };
     
     const message = messages[feature] || 'Fitur sedang dalam pengembangan';
@@ -246,7 +202,6 @@ function showFeature(feature) {
 
 // Navigate
 function navigateTo(page) {
-    // Update active state
     const navItems = document.querySelectorAll('.nav-item');
     if (navItems && event && event.currentTarget) {
         navItems.forEach(item => {
@@ -267,9 +222,6 @@ function navigateTo(page) {
     if (tg) {
         try {
             tg.showAlert(message);
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-            }
         } catch(e) {
             showToast(message);
         }
@@ -278,52 +230,32 @@ function navigateTo(page) {
     }
 }
 
-// Logout function
-async function logout() {
-    try {
-        const response = await fetch('/api/telegram/logout', {
-            method: 'POST'
-        });
-        
-        if (response.ok) {
-            showToast('Logout berhasil');
-            if (tg) {
-                try {
-                    tg.close();
-                } catch(e) {
-                    console.log('Telegram close error:', e);
-                }
-            }
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+// Close MiniApp
+function closeMiniApp() {
+    if (tg) {
+        try {
+            tg.close();
+        } catch(e) {
+            console.log('Close error:', e);
+            window.close();
         }
-    } catch (error) {
-        console.error('Logout error:', error);
-        showToast('Logout gagal, silakan coba lagi');
+    } else {
+        window.close();
     }
-}
-
-// Login demo
-function loginDemo() {
-    showToast('Buka melalui Telegram untuk login otomatis dengan akun Telegram Anda');
 }
 
 // Show toast message
 function showToast(message) {
-    // Remove existing toast
     const existingToast = document.querySelector('.toast-message');
     if (existingToast) {
         existingToast.remove();
     }
     
-    // Create new toast
     const toast = document.createElement('div');
     toast.className = 'toast-message';
     toast.textContent = message;
     document.body.appendChild(toast);
     
-    // Add style if not exists
     if (!document.querySelector('#toast-style')) {
         const style = document.createElement('style');
         style.id = 'toast-style';
@@ -340,10 +272,9 @@ function showToast(message) {
                 font-size: 14px;
                 z-index: 1000;
                 animation: fadeInUp 0.3s ease;
-                white-space: nowrap;
                 max-width: 90%;
-                white-space: normal;
                 text-align: center;
+                white-space: normal;
             }
             @keyframes fadeInUp {
                 from {
@@ -359,7 +290,6 @@ function showToast(message) {
         document.head.appendChild(style);
     }
     
-    // Remove after 2 seconds
     setTimeout(() => {
         if (toast && toast.remove) {
             toast.remove();
@@ -375,7 +305,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Initialize on load
+// Initialize
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initMiniApp);
 } else {
