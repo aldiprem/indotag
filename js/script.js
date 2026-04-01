@@ -20,7 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Jika di Telegram Mini App, redirect ke halaman khusus
     if (isTelegramApp) {
-        console.log('Detected Telegram Mini App, redirecting to miniapp page...');
+        console.log('Detected Telegram Mini App, redirecting to /miniapp...');
+        // Use full URL to ensure redirect works
         window.location.href = '/miniapp';
         return;
     }
@@ -31,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const mainContent = document.getElementById('main-content');
         if (loadingScreen) loadingScreen.style.display = 'none';
         if (mainContent) mainContent.style.display = 'block';
-    }, 1000);
+    }, 500);
     
     // Setup event listeners
     setupEventListeners();
@@ -48,29 +49,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Detect if user is in Telegram Mini App or Browser
 // =====================================================
 function detectPlatform() {
-    // Check if in Telegram Web App
+    // Method 1: Check for Telegram WebApp object
     if (window.Telegram && window.Telegram.WebApp) {
         isTelegramApp = true;
-        console.log('Running in Telegram Mini App');
+        console.log('Running in Telegram Mini App (WebApp detected)');
         return;
     }
     
-    // Check URL parameters for Telegram data
+    // Method 2: Check URL parameters for Telegram data
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('tgWebAppData') || urlParams.get('tgWebAppVersion')) {
+    if (urlParams.get('tgWebAppData') || urlParams.get('tgWebAppVersion') || urlParams.get('tgWebAppPlatform')) {
         isTelegramApp = true;
         console.log('Running in Telegram Mini App (URL param detected)');
         return;
     }
     
-    // Check user agent for Telegram
+    // Method 3: Check user agent for Telegram
     const userAgent = navigator.userAgent.toLowerCase();
-    if (userAgent.includes('telegram')) {
+    if (userAgent.includes('telegram') || userAgent.includes('tgweb')) {
         isTelegramApp = true;
-        console.log('Running in Telegram (User Agent detected)');
+        console.log('Running in Telegram Mini App (User Agent detected)');
         return;
     }
     
+    // Method 4: Check for specific Telegram WebApp scripts
+    const scripts = document.getElementsByTagName('script');
+    for (let script of scripts) {
+        if (script.src && script.src.includes('telegram-web-app')) {
+            isTelegramApp = true;
+            console.log('Running in Telegram Mini App (Script detected)');
+            return;
+        }
+    }
+    
+    // Not in Telegram
     isTelegramApp = false;
     console.log('Running in Browser');
 }

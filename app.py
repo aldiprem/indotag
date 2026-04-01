@@ -47,6 +47,7 @@ def index():
 
 @app.route('/miniapp')
 def miniapp():
+    # Serve miniapp.html from root directory, not from html folder
     return send_from_directory('html', 'miniapp.html')
 
 # =====================================================
