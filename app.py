@@ -47,7 +47,7 @@ def index():
 
 @app.route('/miniapp')
 def miniapp():
-    return send_from_directory('.', 'miniapp.html')
+    return send_from_directory('html', 'miniapp.html')
 
 # =====================================================
 # Health Check
