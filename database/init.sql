@@ -1,0 +1,70 @@
+CREATE DATABASE IF NOT EXISTS indotag_marketplace;
+USE indotag_marketplace;
+
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) UNIQUE,
+    username VARCHAR(100),
+    telegram_id BIGINT UNIQUE,
+    password_hash VARCHAR(255),
+    full_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_telegram_id (telegram_id),
+    INDEX idx_email (email)
+);
+
+-- Sessions table
+CREATE TABLE IF NOT EXISTS sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    session_token VARCHAR(35) UNIQUE NOT NULL,
+    user_agent TEXT,
+    ip_address VARCHAR(45),
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_session_token (session_token),
+    INDEX idx_expires_at (expires_at)
+);
+
+-- Usernames for sale
+CREATE TABLE IF NOT EXISTS usernames (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL,
+    platform VARCHAR(50) NOT NULL, -- telegram, instagram, etc
+    price DECIMAL(10,2) NOT NULL,
+    seller_id INT NOT NULL,
+    status ENUM('available', 'sold', 'pending') DEFAULT 'available',
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sold_at TIMESTAMP NULL,
+    buyer_id INT NULL,
+    FOREIGN KEY (seller_id) REFERENCES users(id),
+    FOREIGN KEY (buyer_id) REFERENCES users(id),
+    INDEX idx_status (status),
+    INDEX idx_username (username)
+);
+
+-- Transactions table
+CREATE TABLE IF NOT EXISTS transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username_id INT NOT NULL,
+    buyer_id INT NOT NULL,
+    seller_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    status ENUM('pending', 'completed', 'cancelled') DEFAULT 'pending',
+    payment_method VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL,
+    FOREIGN KEY (username_id) REFERENCES usernames(id),
+    FOREIGN KEY (buyer_id) REFERENCES users(id),
+    FOREIGN KEY (seller_id) REFERENCES users(id)
+);
+
+-- Event untuk cleanup session expired
+CREATE EVENT cleanup_expired_sessions
+ON SCHEDULE EVERY 1 HOUR
+DO
+DELETE FROM sessions WHERE expires_at < NOW();
