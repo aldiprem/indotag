@@ -12,7 +12,7 @@ app.secret_key = os.urandom(24)
 # Database configuration
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = ''
+app.config['MYSQL_PASSWORD'] = 'Asdf1234_'
 app.config['MYSQL_DB'] = 'indotag'
 
 # Route untuk static files
@@ -34,7 +34,7 @@ def index():
 @app.route('/miniapp')
 def miniapp():
     """Halaman MiniApp Telegram"""
-    return render_template('html/miniapp.html')
+    return render_template('html', 'miniapp.html')
 
 @app.route('/api/telegram/auth', methods=['POST'])
 def telegram_auth():
