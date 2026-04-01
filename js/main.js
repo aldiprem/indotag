@@ -2,24 +2,52 @@
 let telegramUser = null;
 let tg = null;
 
-// Check if running in Telegram
+// Better detection for Telegram WebApp
 function isTelegramWebApp() {
-    // Cek apakah di Telegram WebApp
-    return !!(window.Telegram && window.Telegram.WebApp);
+    // Cek apakah ada object Telegram dan WebApp
+    if (!window.Telegram || !window.Telegram.WebApp) {
+        return false;
+    }
+    
+    // Cek apakah ini benar-benar environment Telegram
+    // Dengan mengecek initData yang hanya ada di Telegram asli
+    const tgInstance = window.Telegram.WebApp;
+    
+    // Jika initData kosong dan tidak ada user data, kemungkinan bukan Telegram asli
+    if (tgInstance.initData === '' && !tgInstance.initDataUnsafe) {
+        return false;
+    }
+    
+    // Cek platform untuk memastikan
+    const platform = tgInstance.platform;
+    if (platform === 'unknown' || platform === 'web') {
+        // Bisa jadi web version, tapi tetap kita anggap sebagai Telegram
+        // Tapi kita perlu verifikasi lebih lanjut
+        return tgInstance.initData !== '' || (tgInstance.initDataUnsafe && tgInstance.initDataUnsafe.user);
+    }
+    
+    return true;
 }
 
 // Initialize Telegram WebApp
 function initTelegramWebApp() {
     console.log('Current path:', window.location.pathname);
-    console.log('Is Telegram WebApp:', isTelegramWebApp());
+    console.log('Has Telegram object:', !!(window.Telegram));
+    console.log('Has WebApp:', !!(window.Telegram && window.Telegram.WebApp));
     
-    if (isTelegramWebApp()) {
+    // Deteksi dengan cara yang lebih akurat
+    const isInTelegram = isTelegramWebApp();
+    console.log('Is in Telegram WebApp (enhanced):', isInTelegram);
+    
+    if (isInTelegram) {
         // Ini di Telegram
         tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
         
         console.log('Running in Telegram WebApp');
+        console.log('Platform:', tg.platform);
+        console.log('InitData:', tg.initData);
         
         // Get user data from Telegram
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -56,6 +84,39 @@ function initTelegramWebApp() {
             loadRegularContent();
         }
     }
+}
+
+// Alternative detection method without relying on Telegram object
+function detectTelegramEnvironment() {
+    // Method 1: Check URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const tgWebAppData = urlParams.get('tgWebAppData');
+    const tgWebAppVersion = urlParams.get('tgWebAppVersion');
+    const tgWebAppPlatform = urlParams.get('tgWebAppPlatform');
+    
+    if (tgWebAppData || tgWebAppVersion || tgWebAppPlatform) {
+        console.log('Detected via URL params');
+        return true;
+    }
+    
+    // Method 2: Check user agent (less reliable)
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    if (userAgent.includes('Telegram') || userAgent.includes('TelegramBot')) {
+        console.log('Detected via User Agent');
+        return true;
+    }
+    
+    // Method 3: Check if window.opener or parent has Telegram references
+    try {
+        if (window.parent !== window && window.parent.Telegram) {
+            console.log('Detected via parent frame');
+            return true;
+        }
+    } catch(e) {
+        // Cross-origin, might be Telegram
+    }
+    
+    return false;
 }
 
 // Authenticate with backend
@@ -168,7 +229,7 @@ function displayProducts(products) {
         <div class="product-card">
             <h3>${escapeHtml(product.name)}</h3>
             <p>${escapeHtml(product.description)}</p>
-            <div class="price">Rp ${product.price.toLocaleString()}</div>
+            <div class="price">Rp ${Number(product.price).toLocaleString()}</div>
             <button class="btn-buy" onclick="buyProduct(${product.id})">Beli</button>
         </div>
     `).join('');
@@ -201,7 +262,8 @@ function setupEventListeners() {
 
 // Buy product function
 function buyProduct(productId) {
-    if (isTelegramWebApp() && tg) {
+    const isInTelegram = isTelegramWebApp();
+    if (isInTelegram && tg) {
         tg.showAlert('Fitur pembelian akan segera hadir!');
     } else {
         alert('Silakan akses melalui Telegram untuk membeli produk');
