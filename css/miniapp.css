@@ -67,12 +67,36 @@ body {
     gap: 16px;
 }
 
-.user-avatar {
+/* Tambahkan di css/miniapp.css */
+
+.user-avatar-wrapper {
     width: 60px;
     height: 60px;
     border-radius: 50%;
+    overflow: hidden;
+    background: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-avatar {
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    border: 3px solid var(--primary-color);
+}
+
+.user-avatar-emoji {
+    width: 60px;
+    height: 60px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    color: white;
+    font-weight: bold;
 }
 
 .user-info {

@@ -81,10 +81,17 @@ async function authenticateUser() {
 function displayUserProfile() {
     const userSection = document.getElementById('userSection');
     if (userSection && telegramUser) {
+        // Gunakan data URL atau emoji sebagai fallback gambar
+        const avatarUrl = telegramUser.photo_url || getDefaultAvatar(telegramUser.first_name);
+        
         userSection.innerHTML = `
             <div class="user-profile">
-                <img src="${telegramUser.photo_url || 'https://via.placeholder.com/60'}" 
-                     alt="Profile" class="user-avatar" onerror="this.src='https://via.placeholder.com/60'">
+                <div class="user-avatar-wrapper">
+                    ${telegramUser.photo_url ? 
+                        `<img src="${avatarUrl}" alt="Profile" class="user-avatar" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\' viewBox=\'0 0 24 24\' fill=\'%230088cc\'%3E%3Cpath d=\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\'/%3E%3C/svg%3E'">` :
+                        `<div class="user-avatar-emoji">${getAvatarEmoji(telegramUser.first_name)}</div>`
+                    }
+                </div>
                 <div class="user-info">
                     <div class="user-name">${escapeHtml(telegramUser.first_name || '')} ${escapeHtml(telegramUser.last_name || '')}</div>
                     <div class="user-username">@${escapeHtml(telegramUser.username || 'username')}</div>
@@ -95,13 +102,27 @@ function displayUserProfile() {
     }
 }
 
+// Get default avatar based on name
+function getDefaultAvatar(name) {
+    return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 24 24' fill='%230088cc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E`;
+}
+
+// Get avatar emoji
+function getAvatarEmoji(name) {
+    if (!name) return '👤';
+    const firstChar = name.charAt(0).toUpperCase();
+    return firstChar;
+}
+
 // Load demo profile
 function loadDemoProfile() {
     const userSection = document.getElementById('userSection');
     if (userSection) {
         userSection.innerHTML = `
             <div class="user-profile">
-                <img src="https://via.placeholder.com/60" alt="Profile" class="user-avatar">
+                <div class="user-avatar-emoji" style="width:60px;height:60px;background:#0088cc;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;color:white;">
+                    👤
+                </div>
                 <div class="user-info">
                     <div class="user-name">Pengunjung</div>
                     <div class="user-username">Mode Demo</div>
