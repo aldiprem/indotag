@@ -3,13 +3,17 @@ import secrets
 from datetime import datetime, timedelta
 import pymysql
 from db_config import get_db_connection
+from services.user_service import UserService
 
 class User:
-    def __init__(self, id=None, email=None, telegram_id=None, username=None):
-        self.id = id
-        self.email = email
-        self.telegram_id = telegram_id
-        self.username = username
+    # Delegate all methods to UserService for backward compatibility
+    hash_password = staticmethod(UserService.hash_password)
+    verify_password = staticmethod(UserService.verify_password)
+    create_user = staticmethod(UserService.create_user)
+    get_user_by_email = staticmethod(UserService.get_user_by_email)
+    get_user_by_telegram_id = staticmethod(UserService.get_user_by_telegram_id)
+    get_user_by_id = staticmethod(UserService.get_user_by_id)
+    authenticate = staticmethod(UserService.authenticate)
         
     @staticmethod
     def hash_password(password):

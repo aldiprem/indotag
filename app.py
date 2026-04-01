@@ -7,6 +7,8 @@ from db_config import get_db_connection
 from models.user import User
 from utils.session_manager import SessionManager
 from utils.telegram_auth import TelegramAuth
+from services.user_service import UserService
+from services.username_service import UsernameService
 import pymysql
 
 app = Flask(__name__, 
@@ -53,6 +55,139 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     })
+
+@app.route('/miniapp')
+def miniapp():
+    return send_from_directory('templates', 'miniapp.html')
+
+# Update the authentication route to use service
+@app.route('/api/auth/telegram', methods=['POST'])
+def auth_telegram():
+    """Authenticate user via Telegram Mini App"""
+    try:
+        auth_data = request.json
+        verified_data = telegram_auth.verify_telegram_auth(auth_data)
+        
+        if not verified_data:
+            return jsonify({'error': 'Invalid Telegram authentication'}), 401
+        
+        # Check if user exists using service
+        user = UserService.get_user_by_telegram_id(verified_data['id'])
+        
+        if not user:
+            # Create new user
+            user_id = UserService.create_user(
+                email=None,
+                password=None,
+                username=verified_data.get('username'),
+                telegram_id=verified_data['id'],
+                full_name=f"{verified_data.get('first_name', '')} {verified_data.get('last_name', '')}".strip()
+            )
+            
+            if not user_id:
+                return jsonify({'error': 'Failed to create user'}), 500
+            
+            user = UserService.get_user_by_id(user_id)
+        
+        # Create session
+        user_agent = request.user_agent.string if request.user_agent else 'Unknown'
+        session_token = SessionManager.create_session(
+            user['id'],
+            user_agent,
+            request.remote_addr
+        )
+        
+        if not session_token:
+            return jsonify({'error': 'Failed to create session'}), 500
+        
+        response = make_response(jsonify({
+            'success': True,
+            'user': {
+                'id': user['id'],
+                'username': user['username'],
+                'telegram_id': user['telegram_id'],
+                'full_name': user['full_name']
+            }
+        }))
+        
+        # Set session cookie
+        response.set_cookie(
+            'session_token',
+            session_token,
+            max_age=Config.SESSION_EXPIRY_HOURS * 3600,
+            httponly=True,
+            samesite='Lax'
+        )
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error in telegram auth: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+# Update username routes to use service
+@app.route('/api/usernames', methods=['GET'])
+def get_usernames():
+    """Get all available usernames"""
+    try:
+        platform = request.args.get('platform')
+        search = request.args.get('search')
+        sort = request.args.get('sort', 'newest')
+        
+        usernames = UsernameService.get_all_usernames(platform, search, sort)
+        
+        # Format response
+        result = []
+        for username in usernames:
+            result.append({
+                'id': username['id'],
+                'username': username['username'],
+                'platform': username['platform'],
+                'price': float(username['price']),
+                'description': username['description'],
+                'seller_username': username['seller_username'],
+                'created_at': username['created_at'].isoformat() if username['created_at'] else None
+            })
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error getting usernames: {e}")
+        return jsonify({'error': 'Failed to load usernames'}), 500
+
+@app.route('/api/usernames', methods=['POST'])
+def create_username():
+    """Create new username listing (requires authentication)"""
+    try:
+        user = get_user_from_session()
+        if not user:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        data = request.json
+        username = data.get('username')
+        platform = data.get('platform')
+        price = data.get('price')
+        description = data.get('description')
+        
+        if not all([username, platform, price]):
+            return jsonify({'error': 'Username, platform, and price are required'}), 400
+        
+        username_id = UsernameService.create_username(
+            username, platform, price, user['id'], description
+        )
+        
+        if not username_id:
+            return jsonify({'error': 'Failed to create listing'}), 500
+        
+        return jsonify({
+            'success': True,
+            'message': 'Username listed successfully',
+            'id': username_id
+        }), 201
+        
+    except Exception as e:
+        print(f"Error creating username: {e}")
+        return jsonify({'error': 'Failed to create listing'}), 500
 
 # Authentication Routes
 @app.route('/api/auth/telegram', methods=['POST'])
