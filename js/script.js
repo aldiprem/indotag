@@ -7,6 +7,7 @@ let currentUser = null;
 let isTelegramApp = false;
 let allUsernames = [];
 let currentPage = 'home';
+let redirectAttempted = false; // Prevent redirect loop
 
 // API Base URL
 const API_BASE = window.location.origin;
@@ -15,13 +16,19 @@ const API_BASE = window.location.origin;
 // Initialize on page load
 // =====================================================
 document.addEventListener('DOMContentLoaded', async () => {
+    // Check if we're already on miniapp page to prevent loop
+    if (window.location.pathname === '/miniapp') {
+        console.log('Already on miniapp page, skipping redirect');
+        return;
+    }
+    
     // Detect platform
     detectPlatform();
     
-    // Jika di Telegram Mini App, redirect ke halaman khusus
-    if (isTelegramApp) {
+    // Jika di Telegram Mini App dan belum pernah redirect, redirect ke halaman khusus
+    if (isTelegramApp && !redirectAttempted && window.location.pathname !== '/miniapp') {
         console.log('Detected Telegram Mini App, redirecting to /miniapp...');
-        // Use full URL to ensure redirect works
+        redirectAttempted = true;
         window.location.href = '/miniapp';
         return;
     }
@@ -49,6 +56,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Detect if user is in Telegram Mini App or Browser
 // =====================================================
 function detectPlatform() {
+    // Skip detection if already on miniapp
+    if (window.location.pathname === '/miniapp') {
+        isTelegramApp = true;
+        return;
+    }
+    
     // Method 1: Check for Telegram WebApp object
     if (window.Telegram && window.Telegram.WebApp) {
         isTelegramApp = true;
@@ -70,16 +83,6 @@ function detectPlatform() {
         isTelegramApp = true;
         console.log('Running in Telegram Mini App (User Agent detected)');
         return;
-    }
-    
-    // Method 4: Check for specific Telegram WebApp scripts
-    const scripts = document.getElementsByTagName('script');
-    for (let script of scripts) {
-        if (script.src && script.src.includes('telegram-web-app')) {
-            isTelegramApp = true;
-            console.log('Running in Telegram Mini App (Script detected)');
-            return;
-        }
     }
     
     // Not in Telegram
