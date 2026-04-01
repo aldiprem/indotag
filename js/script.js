@@ -5,7 +5,7 @@ let allUsernames = [];
 let currentPage = 'home';
 
 // API Base URL
-const API_BASE = window.location.origin;
+const API_BASE = '/api';
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
