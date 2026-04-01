@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify, make_response, render_template, send_from_directory
+from flask import Flask, request, jsonify, make_response, send_from_directory
 from flask_cors import CORS
 import os
 from datetime import datetime
+import pymysql
 from config import Config
 from db_config import get_db_connection
 from models.user import User
@@ -9,11 +10,10 @@ from utils.session_manager import SessionManager
 from utils.telegram_auth import TelegramAuth
 from services.user_service import UserService
 from services.username_service import UsernameService
-import pymysql
 
 app = Flask(__name__, 
-            static_folder='.',  # Root directory for static files
-            static_url_path='')  # Serve static files from root path
+            static_folder='.',
+            static_url_path='')
 app.config.from_object(Config)
 CORS(app)
 
@@ -29,7 +29,10 @@ def get_user_from_session():
             return session_data
     return None
 
-# Serve static files (CSS, JS, etc)
+# =====================================================
+# Static File Routes
+# =====================================================
+
 @app.route('/css/<path:filename>')
 def serve_css(filename):
     return send_from_directory('css', filename)
@@ -42,12 +45,18 @@ def serve_js(filename):
 def serve_img(filename):
     return send_from_directory('static/img', filename)
 
-# Serve the main HTML page
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
 
-# API Routes
+@app.route('/miniapp')
+def miniapp():
+    return send_from_directory('templates', 'miniapp.html')
+
+# =====================================================
+# Health Check
+# =====================================================
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
@@ -56,11 +65,10 @@ def health_check():
         'timestamp': datetime.now().isoformat()
     })
 
-@app.route('/miniapp')
-def miniapp():
-    return send_from_directory('templates', 'miniapp.html')
+# =====================================================
+# Authentication Routes
+# =====================================================
 
-# Update the authentication route to use service
 @app.route('/api/auth/telegram', methods=['POST'])
 def auth_telegram():
     """Authenticate user via Telegram Mini App"""
@@ -125,135 +133,6 @@ def auth_telegram():
         print(f"Error in telegram auth: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-# Update username routes to use service
-@app.route('/api/usernames', methods=['GET'])
-def get_usernames():
-    """Get all available usernames"""
-    try:
-        platform = request.args.get('platform')
-        search = request.args.get('search')
-        sort = request.args.get('sort', 'newest')
-        
-        usernames = UsernameService.get_all_usernames(platform, search, sort)
-        
-        # Format response
-        result = []
-        for username in usernames:
-            result.append({
-                'id': username['id'],
-                'username': username['username'],
-                'platform': username['platform'],
-                'price': float(username['price']),
-                'description': username['description'],
-                'seller_username': username['seller_username'],
-                'created_at': username['created_at'].isoformat() if username['created_at'] else None
-            })
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        print(f"Error getting usernames: {e}")
-        return jsonify({'error': 'Failed to load usernames'}), 500
-
-@app.route('/api/usernames', methods=['POST'])
-def create_username():
-    """Create new username listing (requires authentication)"""
-    try:
-        user = get_user_from_session()
-        if not user:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        data = request.json
-        username = data.get('username')
-        platform = data.get('platform')
-        price = data.get('price')
-        description = data.get('description')
-        
-        if not all([username, platform, price]):
-            return jsonify({'error': 'Username, platform, and price are required'}), 400
-        
-        username_id = UsernameService.create_username(
-            username, platform, price, user['id'], description
-        )
-        
-        if not username_id:
-            return jsonify({'error': 'Failed to create listing'}), 500
-        
-        return jsonify({
-            'success': True,
-            'message': 'Username listed successfully',
-            'id': username_id
-        }), 201
-        
-    except Exception as e:
-        print(f"Error creating username: {e}")
-        return jsonify({'error': 'Failed to create listing'}), 500
-
-# Authentication Routes
-@app.route('/api/auth/telegram', methods=['POST'])
-def auth_telegram():
-    """Authenticate user via Telegram Mini App"""
-    try:
-        auth_data = request.json
-        verified_data = telegram_auth.verify_telegram_auth(auth_data)
-        
-        if not verified_data:
-            return jsonify({'error': 'Invalid Telegram authentication'}), 401
-        
-        # Check if user exists
-        user = User.get_user_by_telegram_id(verified_data['id'])
-        
-        if not user:
-            # Create new user
-            user_id = User.create_user(
-                email=None,
-                password=None,
-                username=verified_data.get('username'),
-                telegram_id=verified_data['id'],
-                full_name=f"{verified_data.get('first_name', '')} {verified_data.get('last_name', '')}".strip()
-            )
-            
-            if not user_id:
-                return jsonify({'error': 'Failed to create user'}), 500
-            
-            user = User.get_user_by_id(user_id)
-        
-        # Create session
-        user_agent = request.user_agent.string if request.user_agent else 'Unknown'
-        session_token = SessionManager.create_session(
-            user['id'],
-            user_agent,
-            request.remote_addr
-        )
-        
-        if not session_token:
-            return jsonify({'error': 'Failed to create session'}), 500
-        
-        response = make_response(jsonify({
-            'success': True,
-            'user': {
-                'id': user['id'],
-                'username': user['username'],
-                'telegram_id': user['telegram_id'],
-                'full_name': user['full_name']
-            }
-        }))
-        
-        # Set session cookie
-        response.set_cookie(
-            'session_token',
-            session_token,
-            max_age=Config.SESSION_EXPIRY_HOURS * 3600,
-            httponly=True,
-            samesite='Lax'
-        )
-        
-        return response
-        
-    except Exception as e:
-        print(f"Error in telegram auth: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
-
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     """Register new user with email/password (for browser users)"""
@@ -267,12 +146,12 @@ def register():
             return jsonify({'error': 'Email and password required'}), 400
         
         # Check if email already exists
-        existing_user = User.get_user_by_email(email)
+        existing_user = UserService.get_user_by_email(email)
         if existing_user:
             return jsonify({'error': 'Email already registered'}), 400
         
         # Create user
-        user_id = User.create_user(email, password, username)
+        user_id = UserService.create_user(email, password, username)
         
         if not user_id:
             return jsonify({'error': 'Failed to create user'}), 500
@@ -298,7 +177,7 @@ def login():
             return jsonify({'error': 'Email/username and password required'}), 400
         
         # Authenticate user
-        user = User.authenticate(email_or_username, password)
+        user = UserService.authenticate(email_or_username, password)
         
         if not user:
             return jsonify({'error': 'Invalid credentials'}), 401
@@ -385,27 +264,19 @@ def get_current_user():
     
     return jsonify({'authenticated': False}), 401
 
-# Marketplace API Routes
+# =====================================================
+# Marketplace Routes
+# =====================================================
+
 @app.route('/api/usernames', methods=['GET'])
 def get_usernames():
     """Get all available usernames"""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        platform = request.args.get('platform')
+        search = request.args.get('search')
+        sort = request.args.get('sort', 'newest')
         
-        cursor.execute("""
-            SELECT u.*, 
-                   s.username as seller_username,
-                   s.full_name as seller_name
-            FROM usernames u
-            JOIN users s ON u.seller_id = s.id
-            WHERE u.status = 'available'
-            ORDER BY u.created_at DESC
-        """)
-        
-        usernames = cursor.fetchall()
-        cursor.close()
-        conn.close()
+        usernames = UsernameService.get_all_usernames(platform, search, sort)
         
         # Format response
         result = []
@@ -414,12 +285,9 @@ def get_usernames():
                 'id': username['id'],
                 'username': username['username'],
                 'platform': username['platform'],
-                'price': username['price'],
+                'price': float(username['price']),
                 'description': username['description'],
-                'seller': {
-                    'username': username['seller_username'],
-                    'full_name': username['seller_name']
-                },
+                'seller_username': username['seller_username'],
                 'created_at': username['created_at'].isoformat() if username['created_at'] else None
             })
         
@@ -433,22 +301,7 @@ def get_usernames():
 def get_username_detail(username_id):
     """Get username detail"""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
-        
-        cursor.execute("""
-            SELECT u.*, 
-                   s.username as seller_username,
-                   s.full_name as seller_name,
-                   s.email as seller_email
-            FROM usernames u
-            JOIN users s ON u.seller_id = s.id
-            WHERE u.id = %s
-        """, (username_id,))
-        
-        username = cursor.fetchone()
-        cursor.close()
-        conn.close()
+        username = UsernameService.get_username_by_id(username_id)
         
         if not username:
             return jsonify({'error': 'Username not found'}), 404
@@ -457,7 +310,7 @@ def get_username_detail(username_id):
             'id': username['id'],
             'username': username['username'],
             'platform': username['platform'],
-            'price': username['price'],
+            'price': float(username['price']),
             'description': username['description'],
             'status': username['status'],
             'seller': {
@@ -489,18 +342,12 @@ def create_username():
         if not all([username, platform, price]):
             return jsonify({'error': 'Username, platform, and price are required'}), 400
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        username_id = UsernameService.create_username(
+            username, platform, price, user['id'], description
+        )
         
-        cursor.execute("""
-            INSERT INTO usernames (username, platform, price, seller_id, description)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (username, platform, price, user['id'], description))
-        
-        conn.commit()
-        username_id = cursor.lastrowid
-        cursor.close()
-        conn.close()
+        if not username_id:
+            return jsonify({'error': 'Failed to create listing'}), 500
         
         return jsonify({
             'success': True,
@@ -511,6 +358,65 @@ def create_username():
     except Exception as e:
         print(f"Error creating username: {e}")
         return jsonify({'error': 'Failed to create listing'}), 500
+
+@app.route('/api/usernames/<int:username_id>/buy', methods=['POST'])
+def buy_username(username_id):
+    """Buy a username (requires authentication)"""
+    try:
+        user = get_user_from_session()
+        if not user:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        username = UsernameService.get_username_by_id(username_id)
+        
+        if not username:
+            return jsonify({'error': 'Username not found'}), 404
+        
+        if username['status'] != 'available':
+            return jsonify({'error': 'Username not available'}), 400
+        
+        if username['seller_id'] == user['id']:
+            return jsonify({'error': 'Cannot buy your own username'}), 400
+        
+        # Create transaction
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Update username status
+            cursor.execute("""
+                UPDATE usernames 
+                SET status = 'pending', buyer_id = %s 
+                WHERE id = %s AND status = 'available'
+            """, (user['id'], username_id))
+            
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Username no longer available'}), 400
+            
+            # Create transaction record
+            cursor.execute("""
+                INSERT INTO transactions (username_id, buyer_id, seller_id, amount, status)
+                VALUES (%s, %s, %s, %s, 'pending')
+            """, (username_id, user['id'], username['seller_id'], username['price']))
+            
+            conn.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Purchase initiated. Please complete payment.'
+            })
+            
+        except Exception as e:
+            conn.rollback()
+            print(f"Error in buy transaction: {e}")
+            return jsonify({'error': 'Failed to process purchase'}), 500
+        finally:
+            cursor.close()
+            conn.close()
+        
+    except Exception as e:
+        print(f"Error buying username: {e}")
+        return jsonify({'error': 'Failed to process purchase'}), 500
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
@@ -548,19 +454,33 @@ def get_stats():
             'total_transactions': 0
         })
 
-# Handle 404 for all other routes
+# =====================================================
+# Error Handlers
+# =====================================================
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Resource not found'}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({'error': 'Internal server error'}), 500
+
+# =====================================================
+# Main
+# =====================================================
 
 if __name__ == '__main__':
     # Make sure directories exist
     os.makedirs('css', exist_ok=True)
     os.makedirs('js', exist_ok=True)
     os.makedirs('static/img', exist_ok=True)
+    os.makedirs('templates', exist_ok=True)
+    os.makedirs('services', exist_ok=True)
     
     print(f"Starting Indotag Marketplace on {Config.HOST}:{Config.PORT}")
     print(f"Access the website at: http://{Config.HOST}:{Config.PORT}")
+    print(f"Telegram Mini App at: http://{Config.HOST}:{Config.PORT}/miniapp")
     
     app.run(
         host=Config.HOST,
