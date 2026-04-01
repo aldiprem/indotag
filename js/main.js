@@ -4,15 +4,22 @@ let tg = null;
 
 // Check if running in Telegram
 function isTelegramWebApp() {
-    return window.Telegram && window.Telegram.WebApp;
+    // Cek apakah di Telegram WebApp
+    return !!(window.Telegram && window.Telegram.WebApp);
 }
 
 // Initialize Telegram WebApp
 function initTelegramWebApp() {
+    console.log('Current path:', window.location.pathname);
+    console.log('Is Telegram WebApp:', isTelegramWebApp());
+    
     if (isTelegramWebApp()) {
+        // Ini di Telegram
         tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+        
+        console.log('Running in Telegram WebApp');
         
         // Get user data from Telegram
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -28,18 +35,24 @@ function initTelegramWebApp() {
             }
         }
         
-        // Check if current page is miniapp
-        if (window.location.pathname === '/miniapp') {
-            loadMiniAppContent();
-        } else {
-            // Redirect to miniapp if in Telegram
+        // Jika di root path dan di Telegram, redirect ke miniapp
+        if (window.location.pathname === '/' || window.location.pathname === '') {
+            console.log('Redirecting to miniapp...');
             window.location.href = '/miniapp';
+        } else if (window.location.pathname === '/miniapp') {
+            // Load MiniApp content
+            loadMiniAppContent();
         }
     } else {
-        // Not in Telegram, show regular content
+        // Tidak di Telegram, tampilkan konten biasa
+        console.log('Running in regular browser');
+        
+        // Jika sedang di halaman miniapp, redirect ke home
         if (window.location.pathname === '/miniapp') {
+            console.log('Redirecting to home...');
             window.location.href = '/';
         } else {
+            // Load regular website content
             loadRegularContent();
         }
     }
@@ -87,13 +100,35 @@ function displayUserProfile() {
 
 // Load MiniApp content
 async function loadMiniAppContent() {
+    console.log('Loading MiniApp content...');
+    
+    // Tampilkan loading
+    const profileDiv = document.getElementById('userProfile');
+    if (profileDiv) {
+        profileDiv.innerHTML = '<div class="loading-spinner"></div>';
+    }
+    
     if (telegramUser) {
         displayUserProfile();
+    } else {
+        // Jika belum ada user data, coba ambil dari session
+        try {
+            const response = await fetch('/api/user/profile');
+            const result = await response.json();
+            if (result.success) {
+                telegramUser = result.user;
+                displayUserProfile();
+            }
+        } catch (error) {
+            console.error('Error getting profile:', error);
+        }
     }
 }
 
 // Load regular website content
 function loadRegularContent() {
+    console.log('Loading regular website content...');
+    
     // Load products from API
     loadProducts();
     
@@ -103,13 +138,19 @@ function loadRegularContent() {
 
 // Load products from API
 async function loadProducts() {
+    const productsGrid = document.getElementById('productsGrid');
+    if (!productsGrid) return;
+    
+    // Tampilkan loading
+    productsGrid.innerHTML = '<div class="loading-spinner"></div>';
+    
     try {
         const response = await fetch('/api/products');
         const products = await response.json();
         displayProducts(products);
     } catch (error) {
         console.error('Error loading products:', error);
-        displayProducts([]);
+        productsGrid.innerHTML = '<p>Gagal memuat produk. Silakan refresh halaman.</p>';
     }
 }
 
@@ -118,19 +159,27 @@ function displayProducts(products) {
     const productsGrid = document.getElementById('productsGrid');
     if (!productsGrid) return;
     
-    if (products.length === 0) {
-        productsGrid.innerHTML = '<p>No products available</p>';
+    if (!products || products.length === 0) {
+        productsGrid.innerHTML = '<p>Belum ada produk tersedia</p>';
         return;
     }
     
     productsGrid.innerHTML = products.map(product => `
         <div class="product-card">
-            <h3>${product.name}</h3>
-            <p>${product.description}</p>
+            <h3>${escapeHtml(product.name)}</h3>
+            <p>${escapeHtml(product.description)}</p>
             <div class="price">Rp ${product.price.toLocaleString()}</div>
             <button class="btn-buy" onclick="buyProduct(${product.id})">Beli</button>
         </div>
     `).join('');
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Setup event listeners
@@ -145,21 +194,17 @@ function setupEventListeners() {
     const getStartedBtn = document.getElementById('getStartedBtn');
     if (getStartedBtn) {
         getStartedBtn.addEventListener('click', () => {
-            if (isTelegramWebApp()) {
-                window.location.href = '/miniapp';
-            } else {
-                alert('Download Telegram untuk pengalaman terbaik!');
-            }
+            alert('Silakan akses melalui Telegram untuk pengalaman terbaik!');
         });
     }
 }
 
 // Buy product function
 function buyProduct(productId) {
-    if (isTelegramWebApp()) {
+    if (isTelegramWebApp() && tg) {
         tg.showAlert('Fitur pembelian akan segera hadir!');
     } else {
-        alert('Silakan login melalui Telegram untuk membeli produk');
+        alert('Silakan akses melalui Telegram untuk membeli produk');
     }
 }
 
