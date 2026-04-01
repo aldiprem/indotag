@@ -14,7 +14,13 @@ app = Flask(__name__,
             static_folder='.',
             static_url_path='')
 app.config.from_object(Config)
-CORS(app)
+
+# Configure CORS properly
+CORS(app, 
+     origins=['https://indotag.site', 'https://www.indotag.site', 'http://localhost:8080', 'http://127.0.0.1:8080'],
+     supports_credentials=True,
+     allow_headers=['Content-Type', 'Authorization', 'Cookie'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
 def get_user_from_session():
     """Helper to get user from session token in cookie"""
@@ -41,14 +47,17 @@ def serve_js(filename):
 def serve_img(filename):
     return send_from_directory('static/img', filename)
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory('static/img', 'favicon.ico')
+
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
 
 @app.route('/miniapp')
 def miniapp():
-    # Serve miniapp.html from root directory, not from html folder
-    return send_from_directory('html', 'miniapp.html')
+    return send_from_directory('.', 'miniapp.html')
 
 # =====================================================
 # Health Check
@@ -127,7 +136,9 @@ def auth_telegram():
             session_token,
             max_age=Config.SESSION_EXPIRY_HOURS * 3600,
             httponly=True,
-            samesite='Lax'
+            samesite='Lax',
+            secure=True,
+            domain='indotag.site'  # Important for cross-subdomain
         )
         
         return response
@@ -226,7 +237,9 @@ def login():
             session_token,
             max_age=Config.SESSION_EXPIRY_HOURS * 3600,
             httponly=True,
-            samesite='Lax'
+            samesite='Lax',
+            secure=True,
+            domain='indotag.site'  # Important for cross-subdomain
         )
         
         return response
@@ -244,28 +257,42 @@ def logout():
         SessionManager.delete_session(session_token)
     
     response = make_response(jsonify({'success': True}))
-    response.delete_cookie('session_token')
+    response.delete_cookie('session_token', domain='indotag.site')
     
     return response
 
-@app.route('/api/auth/me', methods=['GET'])
+@app.route('/api/auth/me', methods=['GET', 'OPTIONS'])
 def get_current_user():
     """Get current authenticated user"""
+    # Handle preflight request
+    if request.method == 'OPTIONS':
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', 'https://www.indotag.site')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Cookie')
+        return response
+    
     user = get_user_from_session()
     
-    if user:
-        return jsonify({
-            'authenticated': True,
-            'user': {
-                'id': user['id'],
-                'email': user['email'],
-                'username': user['username'],
-                'telegram_id': user['telegram_id'],
-                'full_name': user.get('full_name')
-            }
-        })
+    response = make_response(jsonify({
+        'authenticated': bool(user),
+        'user': {
+            'id': user['id'],
+            'email': user['email'],
+            'username': user['username'],
+            'telegram_id': user['telegram_id'],
+            'full_name': user.get('full_name')
+        } if user else None
+    }))
     
-    return jsonify({'authenticated': False}), 401
+    response.headers.add('Access-Control-Allow-Origin', 'https://www.indotag.site')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    
+    if not user:
+        return response, 401
+    
+    return response
 
 # =====================================================
 # Marketplace Routes
@@ -294,7 +321,10 @@ def get_usernames():
                 'created_at': username['created_at'].isoformat() if username['created_at'] else None
             })
         
-        return jsonify(result)
+        response = jsonify(result)
+        response.headers.add('Access-Control-Allow-Origin', 'https://www.indotag.site')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
         
     except Exception as e:
         print(f"Error getting usernames: {e}")
@@ -443,11 +473,14 @@ def get_stats():
         cursor.close()
         conn.close()
         
-        return jsonify({
+        response = jsonify({
             'total_usernames': total_usernames,
             'total_users': total_users,
             'total_transactions': total_transactions
         })
+        response.headers.add('Access-Control-Allow-Origin', 'https://www.indotag.site')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
         
     except Exception as e:
         print(f"Error getting stats: {e}")
