@@ -4,71 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>IndoTag MiniApp</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <style>
-        /* MiniApp specific styles */
-        body {
-            background: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            margin: 0;
-            padding: 0;
-        }
-        
-        .miniapp-container {
-            max-width: 100%;
-            padding: 20px;
-        }
-        
-        .user-profile {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .user-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            margin: 0 auto 15px;
-            object-fit: cover;
-        }
-        
-        .user-name {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .user-username {
-            color: var(--tg-theme-hint-color, #666);
-            margin-bottom: 15px;
-        }
-        
-        .logout-btn {
-            background: var(--tg-theme-destructive-text-color, #ff3b30);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/miniapp.css">
 </head>
 <body>
     <div class="miniapp-container">
-        <div id="userProfile" class="user-profile">
-            <div class="loading-spinner"></div>
+        <!-- Header -->
+        <div class="miniapp-header">
+            <div class="header-content">
+                <h1 class="app-title">IndoTag</h1>
+                <p class="app-subtitle">Platform Digital Terpercaya</p>
+            </div>
         </div>
-        
-        <div class="features">
-            <h2>Welcome to IndoTag MiniApp</h2>
-            <p>Nikmati pengalaman terbaik melalui Telegram MiniApp kami</p>
+
+        <!-- User Profile Section -->
+        <div class="user-section" id="userSection">
+            <div class="loading-wrapper">
+                <div class="loading-spinner"></div>
+                <p>Memuat profil...</p>
+            </div>
+        </div>
+
+        <!-- Menu Grid -->
+        <div class="menu-grid">
+            <div class="menu-card" onclick="showFeature('marketplace')">
+                <div class="menu-icon">🛍️</div>
+                <h3>Marketplace</h3>
+                <p>Temukan produk terbaik</p>
+            </div>
+            <div class="menu-card" onclick="showFeature('pricing')">
+                <div class="menu-icon">💰</div>
+                <h3>Pricing</h3>
+                <p>Paket spesial untuk Anda</p>
+            </div>
+            <div class="menu-card" onclick="showFeature('profile')">
+                <div class="menu-icon">👤</div>
+                <h3>Profil</h3>
+                <p>Kelola akun Anda</p>
+            </div>
+            <div class="menu-card" onclick="showFeature('support')">
+                <div class="menu-icon">💬</div>
+                <h3>Bantuan</h3>
+                <p>Pusat bantuan</p>
+            </div>
+        </div>
+
+        <!-- Featured Products -->
+        <div class="featured-section">
+            <h2 class="section-title">Produk Unggulan</h2>
+            <div class="products-list" id="productsList">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item active" onclick="navigateTo('home')">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-label">Beranda</span>
+            </div>
+            <div class="nav-item" onclick="navigateTo('shop')">
+                <span class="nav-icon">🛒</span>
+                <span class="nav-label">Toko</span>
+            </div>
+            <div class="nav-item" onclick="navigateTo('orders')">
+                <span class="nav-icon">📦</span>
+                <span class="nav-label">Pesanan</span>
+            </div>
+            <div class="nav-item" onclick="navigateTo('profile')">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">Saya</span>
+            </div>
         </div>
     </div>
-    
+
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="/js/main.js"></script>
+    <script src="/js/miniapp.js"></script>
 </body>
 </html>

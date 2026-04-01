@@ -1,200 +1,156 @@
-let tg = window.Telegram.WebApp;
-let currentUser = null;
-let allUsernames = [];
+// Main website JavaScript
+let telegramUser = null;
 
-const API_BASE = window.location.origin;
-
-document.addEventListener('DOMContentLoaded', async () => {
-    tg.expand();
-    tg.enableClosingConfirmation();
-    tg.ready();
+// Initialize website
+function initWebsite() {
+    console.log('Initializing website...');
     
-    const telegramUser = tg.initDataUnsafe.user;
+    // Load products
+    loadProducts();
     
-    if (telegramUser) {
-        await authenticateWithTelegram(telegramUser);
-    }
-    
-    setTimeout(() => {
-        document.getElementById('loading-screen').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-    }, 500);
-    
+    // Setup event listeners
     setupEventListeners();
-    await loadUsernames();
-});
-
-async function authenticateWithTelegram(user) {
-    try {
-        const res = await fetch(`${API_BASE}/api/auth/telegram`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-                id: user.id,
-                first_name: user.first_name,
-                last_name: user.last_name || '',
-                username: user.username || '',
-                auth_date: Math.floor(Date.now() / 1000)
-            })
-        });
-        if (res.ok) {
-            const data = await res.json();
-            currentUser = data.user;
-            updateUI();
-        }
-    } catch (e) { console.error(e); }
-}
-
-function updateUI() {
-    const badge = document.getElementById('userBadge');
-    const welcome = document.getElementById('welcomeBanner');
-    const sellSection = document.getElementById('sellSection');
     
-    if (currentUser) {
-        badge.innerHTML = `<img src="${tg.initDataUnsafe.user?.photo_url || ''}" onerror="this.style.display='none'"><span>${currentUser.full_name || currentUser.username}</span>`;
-        welcome.innerHTML = `<h2>Welcome back, ${currentUser.full_name || currentUser.username}!</h2><p>Ready to buy or sell usernames?</p>`;
-        sellSection.style.display = 'block';
+    // Check if running in Telegram (just for info, no redirect)
+    if (window.Telegram && window.Telegram.WebApp) {
+        console.log('This page is opened in Telegram but staying on website');
+        // Optional: Show banner to open MiniApp
+        showTelegramBanner();
     }
 }
 
-function setupEventListeners() {
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tab = btn.dataset.tab;
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            if (tab === 'marketplace') {
-                document.querySelector('.section:first-of-type').style.display = 'block';
-                document.getElementById('sellSection').style.display = 'none';
-                document.querySelector('.info').style.display = 'grid';
-                document.getElementById('welcomeBanner').style.display = 'block';
-            } else if (tab === 'sell') {
-                if (currentUser) {
-                    document.querySelector('.section:first-of-type').style.display = 'none';
-                    document.getElementById('sellSection').style.display = 'block';
-                    document.querySelector('.info').style.display = 'none';
-                    document.getElementById('welcomeBanner').style.display = 'none';
-                } else {
-                    showToast('Please login to sell', 'warning');
-                    document.querySelector('.nav-btn[data-tab="marketplace"]').click();
-                }
-            } else if (tab === 'profile') {
-                const user = tg.initDataUnsafe.user;
-                tg.showPopup({ title: 'Profile', message: `Name: ${user.first_name} ${user.last_name || ''}\nUsername: @${user.username || 'N/A'}\nID: ${user.id}`, buttons: [{id: 'close', type: 'close'}] });
-            }
-        });
-    });
+// Load products from API
+async function loadProducts() {
+    const productsGrid = document.getElementById('productsGrid');
+    if (!productsGrid) return;
     
-    document.getElementById('platformFilter')?.addEventListener('change', filterUsernames);
-    document.getElementById('sortBtn')?.addEventListener('click', () => {
-        const btn = document.getElementById('sortBtn');
-        const current = btn.dataset.sort || 'newest';
-        if (current === 'newest') {
-            btn.innerHTML = 'Harga Rendah';
-            btn.dataset.sort = 'price_low';
-            filterUsernames('price_low');
-        } else {
-            btn.innerHTML = 'Terbaru';
-            btn.dataset.sort = 'newest';
-            filterUsernames('newest');
-        }
-    });
-    document.getElementById('submitBtn')?.addEventListener('click', submitListing);
-}
-
-async function loadUsernames() {
+    productsGrid.innerHTML = '<div class="loading-spinner"></div>';
+    
     try {
-        const res = await fetch(`${API_BASE}/api/usernames`);
-        if (res.ok) {
-            allUsernames = await res.json();
-            renderUsernames(allUsernames);
-        }
-    } catch (e) { console.error(e); }
+        const response = await fetch('/api/products');
+        const products = await response.json();
+        displayProducts(products);
+    } catch (error) {
+        console.error('Error loading products:', error);
+        productsGrid.innerHTML = '<p>Gagal memuat produk. Silakan refresh halaman.</p>';
+    }
 }
 
-function renderUsernames(usernames) {
-    const grid = document.getElementById('marketplaceGrid');
-    if (!usernames || !usernames.length) {
-        grid.innerHTML = '<div class="loading"><p>No usernames available</p></div>';
+// Display products in grid
+function displayProducts(products) {
+    const productsGrid = document.getElementById('productsGrid');
+    if (!productsGrid) return;
+    
+    if (!products || products.length === 0) {
+        productsGrid.innerHTML = '<p>Belum ada produk tersedia</p>';
         return;
     }
-    grid.innerHTML = usernames.map(u => `
-        <div class="username-card" onclick="buyUsername(${u.id})">
-            <div class="card-header"><h3>${escapeHtml(u.username)}</h3><span>${getPlatformName(u.platform)}</span></div>
-            <div class="card-body"><div class="price">Rp ${formatPrice(u.price)}</div><div class="description">${escapeHtml(u.description || 'Premium username')}</div><div class="seller-info"><i class="fas fa-user"></i> ${escapeHtml(u.seller_username)}</div></div>
-            <div class="card-footer"><button class="buy-btn" onclick="event.stopPropagation(); buyUsername(${u.id})">Buy Now</button></div>
+    
+    productsGrid.innerHTML = products.map(product => `
+        <div class="product-card">
+            <h3>${escapeHtml(product.name)}</h3>
+            <p>${escapeHtml(product.description)}</p>
+            <div class="price">Rp ${Number(product.price).toLocaleString()}</div>
+            <button class="btn-buy" onclick="buyProduct(${product.id})">Beli</button>
         </div>
     `).join('');
 }
 
-function filterUsernames(sortType) {
-    let filtered = [...allUsernames];
-    const platform = document.getElementById('platformFilter')?.value;
-    if (platform && platform !== 'all') filtered = filtered.filter(u => u.platform === platform);
-    const sort = sortType || 'newest';
-    if (sort === 'price_low') filtered.sort((a,b) => a.price - b.price);
-    else filtered.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-    renderUsernames(filtered);
+// Show Telegram banner
+function showTelegramBanner() {
+    const banner = document.createElement('div');
+    banner.className = 'telegram-banner';
+    banner.innerHTML = `
+        <div class="banner-content">
+            <span>📱 Buka di Telegram MiniApp untuk pengalaman lebih baik!</span>
+            <button onclick="openMiniApp()">Buka MiniApp</button>
+        </div>
+    `;
+    document.body.insertBefore(banner, document.body.firstChild);
+    
+    // Add styles for banner
+    const style = document.createElement('style');
+    style.textContent = `
+        .telegram-banner {
+            background: linear-gradient(135deg, #0088cc, #006699);
+            color: white;
+            padding: 12px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .banner-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            gap: 16px;
+        }
+        .telegram-banner button {
+            background: white;
+            color: #0088cc;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        @media (max-width: 768px) {
+            .banner-content {
+                flex-direction: column;
+            }
+        }
+    `;
+    document.head.appendChild(style);
 }
 
-async function buyUsername(id) {
-    if (!currentUser) return showToast('Please login to purchase', 'warning');
-    const username = allUsernames.find(u => u.id === id);
-    tg.showPopup({
-        title: 'Confirm Purchase',
-        message: `Buy ${username.username} for Rp ${formatPrice(username.price)}?`,
-        buttons: [{id: 'cancel', type: 'cancel'}, {id: 'buy', type: 'default'}]
-    }, async (btn) => {
-        if (btn === 'buy') {
-            tg.showProgress();
-            try {
-                const res = await fetch(`${API_BASE}/api/usernames/${id}/buy`, { method: 'POST', credentials: 'include' });
-                tg.hideProgress();
-                if (res.ok) {
-                    showToast('Purchase successful!', 'success');
-                    tg.showAlert('Username purchased! Please contact seller.');
-                    await loadUsernames();
-                } else {
-                    const err = await res.json();
-                    showToast(err.error, 'error');
-                }
-            } catch (e) { tg.hideProgress(); showToast('Purchase failed', 'error'); }
-        }
+// Open MiniApp
+function openMiniApp() {
+    window.open('/miniapp', '_blank');
+}
+
+// Escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Buy product
+function buyProduct(productId) {
+    alert('Fitur pembelian akan segera hadir! Silakan login terlebih dahulu.');
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            alert('Fitur login akan segera hadir!');
+        });
+    }
+    
+    const getStartedBtn = document.getElementById('getStartedBtn');
+    if (getStartedBtn) {
+        getStartedBtn.addEventListener('click', () => {
+            alert('Mulai perjalanan digital Anda bersama IndoTag!');
+        });
+    }
+    
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
     });
 }
 
-async function submitListing() {
-    if (!currentUser) return showToast('Please login to list', 'warning');
-    const username = document.getElementById('sellUsername').value.trim();
-    const platform = document.getElementById('sellPlatform').value;
-    const price = document.getElementById('sellPrice').value;
-    const description = document.getElementById('sellDescription').value.trim();
-    if (!username || !price) return showToast('Username and price required', 'warning');
-    tg.showProgress();
-    try {
-        const res = await fetch(`${API_BASE}/api/usernames`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ username, platform, price: parseFloat(price), description })
-        });
-        tg.hideProgress();
-        if (res.ok) {
-            showToast('Listed successfully!', 'success');
-            document.getElementById('sellUsername').value = '';
-            document.getElementById('sellPrice').value = '';
-            document.getElementById('sellDescription').value = '';
-            await loadUsernames();
-            document.querySelector('.nav-btn[data-tab="marketplace"]').click();
-        } else {
-            const err = await res.json();
-            showToast(err.error, 'error');
-        }
-    } catch (e) { tg.hideProgress(); showToast('Failed', 'error'); }
-}
-
-function getPlatformName(p) { const n = { telegram: 'Telegram', instagram: 'Instagram', twitter: 'Twitter' }; return n[p] || p; }
-function formatPrice(p) { return p.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
-function escapeHtml(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-function showToast(m, t) { const toast = document.getElementById('toast'); toast.textContent = m; toast.style.backgroundColor = t === 'success' ? '#27ae60' : '#e74c3c'; toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 3000); }
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', initWebsite);

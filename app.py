@@ -1,9 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session
 from db_config import get_db_connection
-from services.telegram_service import verify_telegram_user, get_telegram_user_data
+from services.telegram_service import verify_telegram_user
 import os
-from datetime import datetime
-import json
 
 app = Flask(__name__, 
             template_folder='.',
@@ -19,7 +17,7 @@ app.config['MYSQL_DB'] = 'indotag'
 
 @app.route('/')
 def index():
-    """Halaman utama"""
+    """Halaman utama website"""
     return render_template('index.html')
 
 @app.route('/miniapp')
@@ -38,29 +36,27 @@ def telegram_auth():
         user_data = verify_telegram_user(telegram_data)
         
         if user_data:
-            # Save to session
             session['telegram_user'] = user_data
             
-            # Save to database
             conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                INSERT INTO users (telegram_id, username, first_name, last_name, photo_url, last_login)
-                VALUES (%s, %s, %s, %s, %s, NOW())
-                ON DUPLICATE KEY UPDATE
-                username = VALUES(username),
-                first_name = VALUES(first_name),
-                last_name = VALUES(last_name),
-                photo_url = VALUES(photo_url),
-                last_login = NOW()
-            """, (user_data['id'], user_data.get('username', ''), 
-                  user_data.get('first_name', ''), user_data.get('last_name', ''),
-                  user_data.get('photo_url', '')))
-            
-            conn.commit()
-            cursor.close()
-            conn.close()
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO users (telegram_id, username, first_name, last_name, photo_url, last_login)
+                    VALUES (%s, %s, %s, %s, %s, NOW())
+                    ON DUPLICATE KEY UPDATE
+                    username = VALUES(username),
+                    first_name = VALUES(first_name),
+                    last_name = VALUES(last_name),
+                    photo_url = VALUES(photo_url),
+                    last_login = NOW()
+                """, (user_data['id'], user_data.get('username', ''), 
+                      user_data.get('first_name', ''), user_data.get('last_name', ''),
+                      user_data.get('photo_url', '')))
+                
+                conn.commit()
+                cursor.close()
+                conn.close()
             
             return jsonify({
                 'success': True,
@@ -87,6 +83,23 @@ def telegram_logout():
     """Logout user"""
     session.pop('telegram_user', None)
     return jsonify({'success': True})
+
+@app.route('/api/products')
+def get_products():
+    """Get all products"""
+    try:
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM products")
+            products = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return jsonify(products)
+        return jsonify([])
+    except Exception as e:
+        print(f"Error getting products: {e}")
+        return jsonify([])
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)
