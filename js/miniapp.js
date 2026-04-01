@@ -1,4 +1,4 @@
-// MiniApp JavaScript
+// MiniApp JavaScript - CLEAN VERSION, NO API CALLS
 let tg = null;
 let telegramUser = null;
 
@@ -13,30 +13,33 @@ function initMiniApp() {
         try {
             tg.ready();
             tg.expand();
-            console.log('Running in Telegram WebApp');
+            console.log('✅ Running in Telegram WebApp');
         } catch(e) {
             console.error('Error initializing Telegram:', e);
         }
         
-        // LANGSUNG AMBIL DATA USER DARI TELEGRAM, GA PAKE API
+        // LANGSUNG AMBIL DATA DARI TELEGRAM
         try {
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 telegramUser = tg.initDataUnsafe.user;
-                console.log('User data from Telegram:', telegramUser);
-                // LANGSUNG TAMPILIN, GA USAH AUTH KE BACKEND
+                console.log('✅ User data from Telegram:', telegramUser);
+                console.log('   - ID:', telegramUser.id);
+                console.log('   - First name:', telegramUser.first_name);
+                console.log('   - Username:', telegramUser.username);
+                // LANGSUNG TAMPILIN
                 displayUserProfile();
-                showToast(`Halo ${telegramUser.first_name || telegramUser.username}!`);
             } else {
-                console.log('No user data found');
+                console.log('⚠️ No user data found in initDataUnsafe');
+                console.log('initDataUnsafe:', tg.initDataUnsafe);
                 loadDemoProfile();
             }
         } catch(e) {
-            console.error('Error getting user data:', e);
+            console.error('❌ Error getting user data:', e);
             loadDemoProfile();
         }
     } else {
-        // Not in Telegram - show demo
-        console.log('Not in Telegram, showing demo');
+        console.log('❌ Not in Telegram, showing demo');
+        console.log('window.Telegram:', window.Telegram);
         loadDemoProfile();
     }
     
@@ -44,15 +47,20 @@ function initMiniApp() {
     loadProducts();
 }
 
-// Display user profile - LANGSUNG DARI DATA TELEGRAM
+// Display user profile - LANGSUNG DARI TELEGRAM
 function displayUserProfile() {
     const userSection = document.getElementById('userSection');
     if (userSection && telegramUser) {
         // Buat avatar dari inisial nama
-        const initial = telegramUser.first_name ? telegramUser.first_name.charAt(0).toUpperCase() : 
-                       (telegramUser.username ? telegramUser.username.charAt(0).toUpperCase() : 'U');
-        const colors = ['#0088cc', '#34a853', '#ea4335', '#fbbc04', '#9c27b0'];
-        const colorIndex = (telegramUser.id || Math.floor(Math.random() * colors.length)) % colors.length;
+        const firstName = telegramUser.first_name || '';
+        const lastName = telegramUser.last_name || '';
+        const username = telegramUser.username || 'unknown';
+        const userId = telegramUser.id || '';
+        
+        const initial = firstName ? firstName.charAt(0).toUpperCase() : 
+                       (username ? username.charAt(0).toUpperCase() : 'U');
+        const colors = ['#0088cc', '#34a853', '#ea4335', '#fbbc04', '#9c27b0', '#ff5722'];
+        const colorIndex = (userId % colors.length) || 0;
         const bgColor = colors[colorIndex];
         
         const avatarSvg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Crect width='60' height='60' fill='${bgColor}'/%3E%3Ctext x='30' y='40' font-size='28' text-anchor='middle' fill='white' font-weight='bold'%3E${initial}%3C/text%3E%3C/svg%3E`;
@@ -61,10 +69,10 @@ function displayUserProfile() {
             <div class="user-profile">
                 <img src="${avatarSvg}" alt="Profile" class="user-avatar" style="width:60px;height:60px;border-radius:50%;">
                 <div class="user-info">
-                    <div class="user-name">${escapeHtml(telegramUser.first_name || '')} ${escapeHtml(telegramUser.last_name || '')}</div>
-                    <div class="user-username">@${escapeHtml(telegramUser.username || 'unknown')}</div>
-                    <div class="user-id" style="font-size:12px;color:#999;">ID: ${telegramUser.id || ''}</div>
-                    <button class="logout-btn" onclick="closeMiniApp()">Tutup</button>
+                    <div class="user-name" style="font-size:18px;font-weight:bold;">${escapeHtml(firstName)} ${escapeHtml(lastName)}</div>
+                    <div class="user-username" style="color:#666;margin:5px 0;">@${escapeHtml(username)}</div>
+                    <div class="user-id" style="font-size:11px;color:#999;margin-bottom:10px;">ID: ${userId}</div>
+                    <button class="logout-btn" onclick="closeMiniApp()" style="background:#dc3545;color:white;border:none;padding:8px 20px;border-radius:20px;cursor:pointer;">Tutup</button>
                 </div>
             </div>
         `;
@@ -81,16 +89,16 @@ function loadDemoProfile() {
                     👤
                 </div>
                 <div class="user-info">
-                    <div class="user-name">Pengunjung</div>
-                    <div class="user-username">Buka di Telegram</div>
-                    <button class="logout-btn" onclick="alert('Buka melalui Telegram untuk login otomatis')">Info</button>
+                    <div class="user-name" style="font-size:18px;font-weight:bold;">Mode Demo</div>
+                    <div class="user-username" style="color:#666;margin:5px 0;">Buka di Telegram App</div>
+                    <button class="logout-btn" onclick="alert('Buka melalui aplikasi Telegram untuk melihat data user')" style="background:#0088cc;color:white;border:none;padding:8px 20px;border-radius:20px;cursor:pointer;">Info</button>
                 </div>
             </div>
         `;
     }
 }
 
-// Load products from API
+// Load products
 async function loadProducts() {
     const productsList = document.getElementById('productsList');
     if (!productsList) return;
@@ -99,20 +107,11 @@ async function loadProducts() {
     
     try {
         const response = await fetch('/api/products');
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
         const products = await response.json();
         displayProducts(products);
     } catch (error) {
         console.error('Error loading products:', error);
-        productsList.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">📦</div>
-                <p>Gagal memuat produk</p>
-                <small>Silakan coba lagi nanti</small>
-            </div>
-        `;
+        productsList.innerHTML = '<div class="empty-state"><p>Gagal memuat produk</p></div>';
     }
 }
 
@@ -122,182 +121,72 @@ function displayProducts(products) {
     if (!productsList) return;
     
     if (!products || products.length === 0) {
-        productsList.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">🛍️</div>
-                <p>Belum ada produk</p>
-            </div>
-        `;
+        productsList.innerHTML = '<div class="empty-state"><p>Belum ada produk</p></div>';
         return;
     }
     
     productsList.innerHTML = products.map(product => `
-        <div class="product-item" onclick="buyProduct(${product.id})">
-            <div class="product-icon">
+        <div class="product-item" onclick="buyProduct(${product.id})" style="background:#f5f5f5;border-radius:12px;padding:12px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;">
+            <div style="width:50px;height:50px;background:#0088cc;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">
                 ${getProductIcon(product.name)}
             </div>
-            <div class="product-details">
-                <div class="product-name">${escapeHtml(product.name)}</div>
-                <div class="product-desc">${escapeHtml(product.description)}</div>
-                <div class="product-price">Rp ${Number(product.price).toLocaleString()}</div>
+            <div style="flex:1;">
+                <div style="font-weight:bold;">${escapeHtml(product.name)}</div>
+                <div style="font-size:12px;color:#666;">${escapeHtml(product.description)}</div>
+                <div style="color:#0088cc;font-weight:bold;margin-top:5px;">Rp ${Number(product.price).toLocaleString()}</div>
             </div>
-            <button class="buy-btn" onclick="event.stopPropagation(); buyProduct(${product.id})">Beli</button>
+            <button onclick="event.stopPropagation(); buyProduct(${product.id})" style="background:#28a745;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">Beli</button>
         </div>
     `).join('');
 }
 
-// Get product icon
 function getProductIcon(name) {
-    const icons = {
-        'Premium': '⭐',
-        'Standard': '🌟',
-        'Basic': '✨'
-    };
-    for (const [key, icon] of Object.entries(icons)) {
-        if (name && name.includes(key)) return icon;
-    }
+    if (name.includes('Premium')) return '⭐';
+    if (name.includes('Standard')) return '🌟';
+    if (name.includes('Basic')) return '✨';
     return '📦';
 }
 
-// Buy product
 function buyProduct(productId) {
     if (tg) {
-        try {
-            tg.showAlert('Fitur pembelian akan segera hadir!');
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium');
-            }
-        } catch(e) {
-            showToast('Fitur pembelian akan segera hadir!');
-        }
+        tg.showAlert('Fitur pembelian akan segera hadir!');
     } else {
-        showToast('Silakan akses melalui Telegram');
+        alert('Fitur pembelian akan segera hadir!');
     }
 }
 
-// Show feature
 function showFeature(feature) {
     const messages = {
         marketplace: 'Fitur marketplace akan segera hadir!',
-        pricing: 'Lihat paket harga spesial untuk Anda',
-        profile: 'Profil Anda sudah terhubung dengan Telegram',
+        pricing: 'Lihat paket harga spesial',
+        profile: `Halo ${telegramUser?.first_name || 'Pengunjung'}!`,
         support: 'Hubungi support@indotag.site'
     };
-    
-    const message = messages[feature] || 'Fitur sedang dalam pengembangan';
-    
-    if (tg) {
-        try {
-            tg.showAlert(message);
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-            }
-        } catch(e) {
-            showToast(message);
-        }
-    } else {
-        showToast(message);
-    }
+    const msg = messages[feature] || 'Fitur sedang dikembangkan';
+    if (tg) tg.showAlert(msg);
+    else alert(msg);
 }
 
-// Navigate
 function navigateTo(page) {
     const navItems = document.querySelectorAll('.nav-item');
-    if (navItems && event && event.currentTarget) {
-        navItems.forEach(item => {
-            item.classList.remove('active');
-        });
+    if (event && event.currentTarget) {
+        navItems.forEach(item => item.classList.remove('active'));
         event.currentTarget.classList.add('active');
     }
-    
-    const messages = {
-        home: 'Beranda',
-        shop: 'Toko',
-        orders: 'Pesanan',
-        profile: 'Profil'
-    };
-    
-    const message = `Halaman ${messages[page]} sedang dalam pengembangan`;
-    
-    if (tg) {
-        try {
-            tg.showAlert(message);
-        } catch(e) {
-            showToast(message);
-        }
-    } else {
-        showToast(message);
-    }
+    const msg = `Halaman ${page} sedang dikembangkan`;
+    if (tg) tg.showAlert(msg);
+    else alert(msg);
 }
 
-// Close MiniApp
 function closeMiniApp() {
-    if (tg) {
-        try {
-            tg.close();
-        } catch(e) {
-            console.log('Close error:', e);
-            window.close();
-        }
-    } else {
-        window.close();
-    }
+    if (tg) tg.close();
+    else window.close();
 }
 
-// Show toast message
 function showToast(message) {
-    const existingToast = document.querySelector('.toast-message');
-    if (existingToast) {
-        existingToast.remove();
-    }
-    
-    const toast = document.createElement('div');
-    toast.className = 'toast-message';
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    
-    if (!document.querySelector('#toast-style')) {
-        const style = document.createElement('style');
-        style.id = 'toast-style';
-        style.textContent = `
-            .toast-message {
-                position: fixed;
-                bottom: 80px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(0, 0, 0, 0.8);
-                color: white;
-                padding: 10px 20px;
-                border-radius: 8px;
-                font-size: 14px;
-                z-index: 1000;
-                animation: fadeInUp 0.3s ease;
-                max-width: 90%;
-                text-align: center;
-                white-space: normal;
-            }
-            @keyframes fadeInUp {
-                from {
-                    opacity: 0;
-                    transform: translateX(-50%) translateY(20px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateX(-50%) translateY(0);
-                }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-    
-    setTimeout(() => {
-        if (toast && toast.remove) {
-            toast.remove();
-        }
-    }, 2000);
+    alert(message);
 }
 
-// Escape HTML
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -305,7 +194,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Initialize
+// Start
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initMiniApp);
 } else {
