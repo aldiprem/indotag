@@ -26,6 +26,11 @@ def serve_js(filename):
     """Serve JS files"""
     return send_from_directory('js', filename)
 
+@app.route('/html/<path:filename>')
+def serve_html(filename):
+    """Serve HTML files"""
+    return send_from_directory('html', filename)
+
 @app.route('/')
 def index():
     """Halaman utama website"""
